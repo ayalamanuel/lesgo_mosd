@@ -42,7 +42,8 @@ real(rprec), dimension(:,:), allocatable :: eqmxz, eqmyz, wpmxz, wpmyz, eta,   &
     detadx, detady, detadt, u_orb, w_orb, ddtw_orb, ur_eqm, vr_eqm, Cx_wave,   &
     Cy_wave, ur_wpm, vr_wpm, u_LES, ustar_lbc, grad_eta_mag, dgrad_etadt,      &
     CdotGradGradeta, unsxz, unsyz, ur_mag_wpm, H_wpm, nx_wpm, ny_wpm,          &
-    uns_convec_x1, uns_convec_x2, uns_convec_y1, uns_convec_y2
+    uns_convec_x1, uns_convec_x2, uns_convec_y1, uns_convec_y2,                &
+    corr_1, corr_2, corr_3, corr_4, corr_5, corr_6
 
 real(rprec), dimension(:,:), allocatable :: K_wave, D_spread, phi,eta_spectrum,&
      omega_wave, S_kx_ky
@@ -138,6 +139,12 @@ allocate ( uns_convec_x1(nx,ny) ); uns_convec_x1 = 0.0_rprec
 allocate ( uns_convec_x2(nx,ny) ); uns_convec_x2 = 0.0_rprec
 allocate ( uns_convec_y1(nx,ny) ); uns_convec_y1 = 0.0_rprec
 allocate ( uns_convec_y2(nx,ny) ); uns_convec_y2 = 0.0_rprec
+allocate ( corr_1(nx,ny) ); corr_1 = 0.0_rprec
+allocate ( corr_2(nx,ny) ); corr_2 = 0.0_rprec
+allocate ( corr_3(nx,ny) ); corr_3 = 0.0_rprec
+allocate ( corr_4(nx,ny) ); corr_4 = 0.0_rprec
+allocate ( corr_5(nx,ny) ); corr_5 = 0.0_rprec
+allocate ( corr_6(nx,ny) ); corr_6 = 0.0_rprec
 
 #if defined(PPTURBINES) || defined(PPATM) || defined(PPLVLSET)
 allocate ( fxa(ld, ny, lbz:nz) ); fxa = 0.0_rprec

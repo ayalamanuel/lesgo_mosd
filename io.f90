@@ -169,7 +169,7 @@ use param ,only: total_time, wbase
 use sim_param ,only: unsxz, unsyz, dgrad_etadt, CdotGradGradeta, ur_mag_wpm,   &
                      grad_eta_mag, wpmxz, wpmyz, eqmxz, eqmyz, H_wpm, nx_wpm,  &
                      ny_wpm, uns_convec_x1, uns_convec_x2, uns_convec_y1,      &
-                     uns_convec_y2
+                     uns_convec_y2, corr_1, corr_2, corr_3, corr_4, corr_5, corr_6
 implicit none
 
 
@@ -179,15 +179,15 @@ open(2,file=path // 'output/tau_comp.dat', status='unknown',               &
 !! one time header output
 if (jt_total==wbase) write(2,*)  'total_time,unsxz, unsyz,wpmxz, wpmyz, eqmxz, &
 eqmyz, unsxz_p, unsyz_p, dgrad_etadt, CdotGradGradeta, ur_mag_wpm,grad_eta_mag, &
-x1, x2, y1, y2'
+x1, cor1, cor2, cor3, cor4, cor5, cor6'
 
 write(2,*) total_time, sum(unsxz(:,:))/(nx*ny), sum(unsyz(:,:))/(nx*ny),       &
     sum(wpmxz(:,:))/(nx*ny), sum(wpmyz(:,:))/(nx*ny), sum(eqmxz(:,:))/(nx*ny), &
     sum(eqmyz(:,:))/(nx*ny), unsxz(nx/2,ny/2), unsyz(nx/2,ny/2),               &
     dgrad_etadt(nx/2,ny/2), CdotGradGradeta(nx/2,ny/2), ur_mag_wpm(nx/2,ny/2), &
-    grad_eta_mag(nx/2,ny/2), uns_convec_x1(nx/2,ny/2),uns_convec_x2(nx/2,ny/2),&
-    uns_convec_y1(nx/2,ny/2), uns_convec_y2(nx/2,ny/2)
-
+    grad_eta_mag(nx/2,ny/2), uns_convec_x1(nx/2,ny/2), corr_1(nx/2,ny/2),      &
+    corr_2(nx/2,ny/2), corr_3(nx/2,ny/2), corr_4(nx/2,ny/2), corr_5(nx/2,ny/2),&
+    corr_6(nx/2,ny/2)
 close(2)
 
 end subroutine write_tau_comp
