@@ -38,7 +38,7 @@ use param, only : L_x, L_y, pi, nx, ny, dx, dy, alpha_spec, wp_spec, kp_spec,   
                   ld, z_i, u_star, nu_molec, jt_total, write_endian,            &
                   read_endian, path, checkpoint_spectrum, theta_main
 use sim_param, only: K_wave, D_spread, S_kx_ky, phi, omega_wave, eta_spectrum,  &
-                     eta_hat_o
+                     eta_hat_o, eta_hat_o_filter, S_filter
 implicit none
 
 complex(kind=8) :: ii
@@ -93,7 +93,7 @@ if  (.not. ospectrum_file_flag)  then
 else
         write(*,*) 'Reading the random phases for ocean spectrum and previous wave surface'
         open(12, file=checkpoint_spectrum, form='unformatted', convert=read_endian)
-        read(12) phi(:,:), eta_spectrum(:,:)
+        read(12) phi(:,:), eta(:,:)
         close(12)
 end if
 
@@ -101,7 +101,9 @@ end if
 ! Creating the 3D spectrum using the JONSWAP specturm with directional spreading 
 ! (Same as Yang, et al 2014). The directional spreading has the ability to introduce
 ! a main wave direction.
-theta_main = theta_main*pi/180
+theta_main = theta_main*pi/180_rprec
+K_platform = pi/L_platform   ! This has to be with dimensions
+
 do jy = 1, ny
  do jx = 1, nx
 
@@ -126,7 +128,19 @@ do jy = 1, ny
 
         eta_hat_o(jx,jy) = sqrt(2*S_kx_ky(jx,jy)*delta_kx*delta_ky)*exp(ii*phi(jx,jy));
 
-  end do
+        ! This is for offshore turbine angles. We need to calcualte the filtered ocean 
+        ! surface using the size of a typical platform (from input file) such that the 
+        ! angles are not to small
+        S_filter(jx,jy) = S_kx_ky(jx,jy)
+
+        if (K_wave(jx,jy) => K_platform) then        
+        
+        S_filter(jx,jy) = 0.0_rprec
+        eta_hat_o_filter(jx,jy) = sqrt(2*S_filter(jx,jy)*delta_kx*delta_ky)*exp(ii*phi(jx,jy));
+        end if 
+      
+      
+ end do
 end do
 
 ! We need to calculate eta(-k) and then take the complex conjugate. So we need to grab 
@@ -155,7 +169,7 @@ character(64) :: fname_wave
 
 fname_wave = checkpoint_spectrum
 open(11, file=fname_wave, form='unformatted', convert=write_endian, status='unknown', position='rewind')
-write (11) phi(:,:) , eta_spectrum(:,:)
+write (11) phi(:,:) , eta(:,:)
 close(11)
 
 end subroutine osepectrum_checkpoint

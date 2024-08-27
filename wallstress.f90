@@ -250,7 +250,9 @@ use sim_param, only : u, v, eqmxz, eqmyz, wpmxz, wpmyz, eta, detadx, detady,    
         ur_wpm, vr_wpm, u_LES, eta_spectrum, omega_wave, eta_hat_o,             &
         grad_eta_mag, dgrad_etadt, CdotGradGradeta, unsxz, unsyz, ur_mag_wpm,   &
         H_wpm, nx_wpm, ny_wpm, uns_convec_x1, uns_convec_x2, uns_convec_y1,     &
-        uns_convec_y2, corr_1, corr_2, corr_3, corr_4, corr_5, corr_6
+        uns_convec_y2, corr_1, corr_2, corr_3, corr_4, corr_5, corr_6,          &
+        eta_hat_o_filter, eta_filter
+
 use test_filtermodule
 use fft
 use derivatives, only : ddx_fd, ddy_fd
@@ -266,12 +268,13 @@ real(rprec), pointer, dimension(:) :: z
 real(rprec), dimension(ld, ny) :: u1, v1, u_dx, v_dx, x_grid, u_eqm, v_eqm
 real(rprec), dimension(nx, ny) :: u_avg, beta_1, beta_2, beta_11, beta_21, &
                                   Re_delta, Re_fit, Re_delta1, Re_fit1, A1, A, u_orb_1,  &
-                                  eta_spectrum_new, eta_spectrum_1,                      &
+                                  eta_new, eta_1, eta_filter_1                      &
                                   C_mag, ur_mag_eqm, H_arg,              &
                                   deta2dx2, deta2dy2, detadxdy, detadydx,      &
                                   grad_eta_mag_new, uns_mosd
-complex(rprec), dimension(nx,ny) :: eta_hat, eta_shift, u_orb_hat, u_orb_shift
-complex(rprec), dimension(nx/2+1,ny) :: eta_hat_2, u_orb_hat_2
+complex(rprec), dimension(nx,ny) :: eta_hat, eta_shift, u_orb_hat, u_orb_shift, &
+                                    eta_hat_filter, eta_filter_shift
+complex(rprec), dimension(nx/2+1,ny) :: eta_hat_2, u_orb_hat_2, eta_hat_filter_2
 complex(kind=8) :: ii
 ii = cmplx(0.0d0,1.0d0)
 nullify(z)
@@ -315,32 +318,37 @@ if (wave_spec) then
         do jy = 1,ny
                 do jx = 1,nx
         eta_hat(jx,jy) = eta_hat_o(jx,jy)*exp(-ii*omega_wave(jx,jy)*total_time_dim)
+        eta_hat_filter(jx,jy) = eta_hat_o_filter(jx,jy)*exp(-ii*omega_wave(jx,jy)*total_time_dim)
         u_orb_hat(jx,jy) = eta_hat(jx,jy)*omega_wave(jx,jy)
                 end do
         end do
         call frequency_shift(eta_hat,eta_shift)
+        call frequency_shift(eta_hat_filter,eta_filter_shift)
         call frequency_shift(u_orb_hat,u_orb_shift)
 
         eta_hat_2(:,:) = eta_shift(:nx/2+1,1:ny)
+        eta_hat_filter_2(:,:) = eta_filter_shift(:nx/2+1,1:ny)
         u_orb_hat_2(:,:) = u_orb_shift(:nx/2+1,1:ny)
 
-        call dfftw_execute_dft_c2r(back_wave, eta_hat_2, eta_spectrum_1)
+        call dfftw_execute_dft_c2r(back_wave, eta_hat_2, eta_1)
+        call dfftw_execute_dft_c2r(back_wave, eta_hat_filter_2, eta_filter_1)
         call dfftw_execute_dft_c2r(back_wave, u_orb_hat_2, u_orb_1)
 
         ! Since the surface spectrum and orbital velocities are calculated using dimensions,
         ! a normalization must be applied. Because of the FFT, the surface spectrum has to be 
         ! devided by 2
-        eta_spectrum_new(1:nx,1:ny) = eta_spectrum_1(1:nx,1:ny)/2.0_rprec/z_i
-        u_orb(1:nx,1:ny) = u_orb_1(1:nx,1:ny)/u_star
+        eta_new(1:nx,1:ny) = eta_1(1:nx,1:ny)/2.0_rprec/z_i
+        eta_filter(1:nx,1:ny) = eta_filter_1(1:nx,1:ny)/2.0_rprec
+        u_orb(1:nx,1:ny) = u_orb_1(1:nx,1:ny)/2.0_rprec/u_star
         
         ! Calculating the time derivative and spatial derivatives  of the surface
         const_time = 1.0_rprec/dt
-        detadt(1:nx,1:ny) = const_time*(eta_spectrum_new(1:nx,1:ny) - eta_spectrum(1:nx,1:ny))
-        eta_spectrum(1:nx,1:ny) = eta_spectrum_new(1:nx,1:ny)
-        call ddx_fd(eta_spectrum, detadx)
-        call ddy_fd(eta_spectrum, detady)
-        detadx(nx,:) = -eta_spectrum(nx,:)/dx
-        detady(:,ny) = -eta_spectrum(:,ny)/dy
+        detadt(1:nx,1:ny) = const_time*(eta_new(1:nx,1:ny) - eta(1:nx,1:ny))
+        eta(1:nx,1:ny) = eta_new(1:nx,1:ny)
+        call ddx_fd(eta, detadx)
+        call ddy_fd(eta, detady)
+        detadx(nx,:) = -eta(nx,:)/dx
+        detady(:,ny) = -eta(:,ny)/dy
 
         call ddx_fd(detadx,deta2dx2)
         call ddy_fd(detady,deta2dy2)
@@ -368,6 +376,7 @@ else
         detadxdy(1:nx,1:ny) = 0.0_rprec
         ddtw_orb(1:nx,1:ny) = -amp*wave_freq*wave_freq*cos(wave_n*x_grid(1:nx,1:ny) - wave_freq*total_time)
 end if
+
 
 ! Calculating the general phase velocity and the magnitude of surface gradient 
 ! for WPM model

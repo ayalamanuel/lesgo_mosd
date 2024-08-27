@@ -43,12 +43,12 @@ real(rprec), dimension(:,:), allocatable :: eqmxz, eqmyz, wpmxz, wpmyz, eta,   &
     Cy_wave, ur_wpm, vr_wpm, u_LES, ustar_lbc, grad_eta_mag, dgrad_etadt,      &
     CdotGradGradeta, unsxz, unsyz, ur_mag_wpm, H_wpm, nx_wpm, ny_wpm,          &
     uns_convec_x1, uns_convec_x2, uns_convec_y1, uns_convec_y2,                &
-    corr_1, corr_2, corr_3, corr_4, corr_5, corr_6
+    corr_1, corr_2, corr_3, corr_4, corr_5, corr_6, eta_filter
 
 real(rprec), dimension(:,:), allocatable :: K_wave, D_spread, phi,eta_spectrum,&
-     omega_wave, S_kx_ky
+     omega_wave, S_kx_ky, S_filter
 
-complex(rprec), dimension(:,:), allocatable :: eta_hat_o
+complex(rprec), dimension(:,:), allocatable :: eta_hat_o, eta_hat_o_filter
 
 contains
 
@@ -121,10 +121,13 @@ allocate ( u_LES(nx,ny) ); u_LES = 0.0_rprec
 allocate ( K_wave(nx,ny) ); K_wave = 0.0_rprec
 allocate ( D_spread(nx,ny) ); D_spread = 0.0_rprec
 allocate ( S_kx_ky(nx,ny) ); S_kx_ky = 0.0_rprec
+allocate ( S_filter(nx,ny) ); S_filter = 0.0_rprec
 allocate ( phi(nx,ny) ); phi = 0.0_rprec
 allocate ( eta_spectrum(nx,ny) ); eta_spectrum = 0.0_rprec
 allocate ( omega_wave(nx,ny) ); omega_wave = 0.0_rprec
 allocate ( eta_hat_o(nx,ny) ); eta_hat_o = 0.0_rprec
+allocate ( eta_hat_o_filter(nx,ny) ); eta_hat_o_filter = 0.0_rprec
+allocate ( eta_filter(nx,ny) ); eta_filter = 0.0_rprec
 
 allocate ( grad_eta_mag(nx,ny) ); grad_eta_mag = 0.0_rprec
 allocate ( dgrad_etadt(nx,ny) ); dgrad_etadt = 0.0_rprec

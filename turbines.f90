@@ -88,6 +88,9 @@ logical, public :: adm_correction
 ! Number of timesteps between the output
 integer, public :: tbase
 
+! Flag for offshore wind turbine angles
+logical, public :: offshore_theta2
+
 ! The following are derived from the values above
 integer :: nloc             ! total number of turbines
 real(rprec) :: sx           ! spacing in the x-direction, multiple of diameter
@@ -116,6 +119,13 @@ real(rprec) :: eps
 ! Commonly used indices
 integer :: i, j, k, i2, j2, k2, l, s
 integer :: k_start, k_end
+
+! rx ry rz
+!Store global rx, ry, rz values to an array
+real(rprec), allocatable, dimension(:,:,:) ::  rx_a, ry_a, rz_a
+
+!Store local rx, ry, rz values to an array
+real(rprec), allocatable, dimension(:,:,:) ::  rx_l, ry_l, rz_l
 
 contains
 
@@ -158,6 +168,12 @@ nloc = num_x*num_y
 nullify(wind_farm%turbine)
 allocate(wind_farm%turbine(nloc))
 allocate(forcing_fid(nloc))
+
+! allocate local rx ry rz
+ allocate(rx_l(ld,ny,lbz:nz), ry_l(ld,ny,lbz:nz), rz_l(ld,ny,lbz:nz))
+
+! allocate global rx ry rz
+ allocate(rx_a(ld,ny,nz_tot), ry_a(ld,ny,nz_tot), rz_a(ld,ny,nz_tot))
 
 ! Create turbine directory
 call system('mkdir -vp ' // path // output_folder)
@@ -279,6 +295,9 @@ subroutine turbines_nodes
 ! n_hat, num_nodes, and nodes
 !
 use functions, only : cross_product
+use derivatives, only : ddx_fd, ddy_fd
+use sim_param, only : eta_filter, eta, detadx, detady
+use param, only : dx, dy
 implicit none
 
 character (*), parameter :: sub_name = mod_name // '.turbines_nodes'
@@ -304,6 +323,8 @@ real(rprec), pointer, dimension(:) :: x, y, z
 real(rprec) :: filt, filt_t, search_rad, filt_max
 real(rprec), dimension(nloc) :: sumA, turbine_vol
 
+real(rprec), dimension(nx, ny) :: detadx_filter, detady_filter
+
 nullify(x,y,z)
 
 x => grid % x
@@ -312,10 +333,33 @@ z => grid % z
 
 sumA = 0._rprec
 
+rx_a = 0._rprec
+ry_a = 0._rprec
+rz_a = 0._rprec
+
+rx_l = 0._rprec
+ry_l = 0._rprec
+rz_l = 0._rprec
+
 ! z_tot for total domain (since z is local to the processor)
 do k = 1,nz_tot
     z_tot(k) = (k - 0.5_rprec) * dz
 end do
+
+
+if (offshore_theta2) then
+        if (wave_spec) then
+        call ddx_fd(eta_filter, detadx_filter)
+        call ddy_fd(eta_filter, detady_filter)
+        detadx_filter(nx,:) = -eta_filter(nx,:)/dx
+        detady_filter(:,ny) = -eta_filter(:,ny)/dy
+        end if
+
+
+
+end if
+
+
 
 do s=1,nloc
 
@@ -345,6 +389,9 @@ do s=1,nloc
     p_nhat2 = -sin(pi*p_theta1/180.)*cos(pi*p_theta2/180.)
     p_nhat3 = sin(pi*p_theta2/180.)
 
+
+    !*******HERE IS WHERE YOU NEED TO MODIFY FIRST FOR SURGE, etc*******!
+    ! because the turbine center will be moving
     !determine nearest (i,j,k) to turbine center
     icp = nint(p_xloc/dx)
     jcp = nint(p_yloc/dy)
@@ -405,7 +452,18 @@ do s=1,nloc
                     j2 = j
                     ry = y(j) - p_yloc
                 end if
-                rz = z_tot(k) - p_height
+                    rz = z_tot(k) - p_height
+! Global rx_a
+                 rx_a(i,j,k-coord*(nz-1)) = rx
+                 ry_a(i,j,k-coord*(nz-1)) = ry
+                 rz_a(i,j,k-coord*(nz-1)) = rz
+
+! Local rx_a
+    do l = 0,nz  !global k
+                 rx_l(:,:,l) = rx_a(:,:,k-coord*(nz-1))
+                 ry_l(:,:,l) = ry_a(:,:,k-coord*(nz-1))
+                 rz_l(:,:,l) = rz_a(:,:,k-coord*(nz-1))
+    end do
                 r = sqrt(rx*rx + ry*ry + rz*rz)
                 !length projected onto unit normal for this turbine
                 r_norm = abs(rx*p_nhat1 + ry*p_nhat2 + rz*p_nhat3)
@@ -484,6 +542,8 @@ integer :: fid
 real(rprec) :: ind2
 real(rprec), dimension(nloc) :: disk_avg_vel
 real(rprec), dimension(nloc) :: u_vel_center, v_vel_center, w_vel_center
+real(rprec), allocatable, dimension(:,:,:) ::  u_vel_disk, v_vel_disk, w_vel_disk
+real(rprec), allocatable, dimension(:,:,:) ::  u_rel, v_rel, w_rel
 real(rprec), allocatable, dimension(:,:,:) :: w_uv
 real(rprec), pointer, dimension(:) :: y, z
 real(rprec), dimension(nloc) :: buffer_array
@@ -493,6 +553,8 @@ y => grid % y
 z => grid % z
 
 allocate(w_uv(ld,ny,lbz:nz))
+allocate(u_vel_disk(ld,ny,lbz:nz), v_vel_disk(ld,ny,lbz:nz), w_vel_disk(ld,ny,lbz:nz))
+allocate(u_rel(ld,ny,lbz:nz), v_rel(ld,ny,lbz:nz), w_rel(ld,ny,lbz:nz))
 
 #ifdef PPMPI
 !syncing intermediate w-velocities
@@ -514,6 +576,17 @@ end do
 ! Recompute the turbine position if theta1 or theta2 can change
 if (dyn_theta1 .or. dyn_theta2) call turbines_nodes
 
+! Recomputing the unit normal ve
+if (offshore_theta2) then
+
+call turbines_nodes
+
+
+
+end if 
+
+
+
 !Each processor calculates the weighted disk-averaged velocity
 disk_avg_vel = 0._rprec
 u_vel_center = 0._rprec
@@ -523,6 +596,25 @@ do s=1,nloc
     ! Calculate total disk-averaged velocity for each turbine
     ! (current, instantaneous) in the normal direction by integrating the
     ! velocity times the indicator function
+    if (offshore_theta2) then
+    do l=1,wind_farm%turbine(s)%num_nodes
+        i2 = wind_farm%turbine(s)%nodes(l,1)
+        j2 = wind_farm%turbine(s)%nodes(l,2)
+        k2 = wind_farm%turbine(s)%nodes(l,3)
+       
+        u_vel_disk(i2,j2,k2) = (omega_y*rz_l(i2,j2,k2) - omega_z*ry_l(i2,j2,k2))
+        v_vel_disk(i2,j2,k2) = -(omega_x*rz_l(i2,j2,k2) - omega_z*rx_l(i2,j2,k2))
+        w_vel_disk(i2,j2,k2) = (omega_x*ry_l(i2,j2,k2) - omega_y*rx_l(i2,j2,k2))
+        
+        disk_avg_vel(s) = disk_avg_vel(s)                                        &
+            + dx*dy*dz*wind_farm%turbine(s)%ind(l)                               &
+            * ( wind_farm%turbine(s)%nhat(1)*(u(i2,j2,k2)-u_vel_disk(i2,j2,k2))  &
+            + wind_farm%turbine(s)%nhat(2)*(v(i2,j2,k2)-v_vel_disk(i2,j2,k2))    &
+            + wind_farm%turbine(s)%nhat(3)*(w_uv(i2,j2,k2)-w_vel_disk(i2,j2,k2)) )
+    end do
+    end if
+
+
     do l=1,wind_farm%turbine(s)%num_nodes
         i2 = wind_farm%turbine(s)%nodes(l,1)
         j2 = wind_farm%turbine(s)%nodes(l,2)
