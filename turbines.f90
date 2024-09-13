@@ -89,7 +89,7 @@ logical, public :: adm_correction
 integer, public :: tbase
 
 ! Flag for offshore wind turbine angles
-logical, public :: offshore_theta2
+logical, public :: offshore_angles
 
 ! The following are derived from the values above
 integer :: nloc             ! total number of turbines
@@ -295,8 +295,6 @@ subroutine turbines_nodes
 ! n_hat, num_nodes, and nodes
 !
 use functions, only : cross_product
-use derivatives, only : ddx_fd, ddy_fd
-use sim_param, only : eta_filter, eta, detadx, detady
 use param, only : dx, dy
 implicit none
 
@@ -323,8 +321,6 @@ real(rprec), pointer, dimension(:) :: x, y, z
 real(rprec) :: filt, filt_t, search_rad, filt_max
 real(rprec), dimension(nloc) :: sumA, turbine_vol
 
-real(rprec), dimension(nx, ny) :: detadx_filter, detady_filter
-
 nullify(x,y,z)
 
 x => grid % x
@@ -347,20 +343,6 @@ do k = 1,nz_tot
 end do
 
 
-if (offshore_theta2) then
-        if (wave_spec) then
-        call ddx_fd(eta_filter, detadx_filter)
-        call ddy_fd(eta_filter, detady_filter)
-        detadx_filter(nx,:) = -eta_filter(nx,:)/dx
-        detady_filter(:,ny) = -eta_filter(:,ny)/dy
-        end if
-
-
-
-end if
-
-
-
 do s=1,nloc
 
     count_n = 0    !used for counting nodes for each turbine
@@ -378,6 +360,7 @@ do s=1,nloc
     p_nhat2 => wind_farm%turbine(s)%nhat(2)
     p_nhat3 => wind_farm%turbine(s)%nhat(3)
 
+    
     !identify "search area"
     search_rad = 0.5_rprec*p_dia + 3*max(alpha1, alpha2) * sqrt(dx**2 + dy**2 + dz**2)
     imax = min(int(search_rad/dx + 2), Nx/2)
@@ -389,9 +372,6 @@ do s=1,nloc
     p_nhat2 = -sin(pi*p_theta1/180.)*cos(pi*p_theta2/180.)
     p_nhat3 = sin(pi*p_theta2/180.)
 
-
-    !*******HERE IS WHERE YOU NEED TO MODIFY FIRST FOR SURGE, etc*******!
-    ! because the turbine center will be moving
     !determine nearest (i,j,k) to turbine center
     icp = nint(p_xloc/dx)
     jcp = nint(p_yloc/dy)
@@ -526,7 +506,7 @@ subroutine turbines_forcing()
 ! This subroutine applies the drag-disk forcing
 !
 use param, only : pi, lbz
-use sim_param, only : u, v, w, fxa, fya, fza
+use sim_param, only : u, v, w, fxa, fya, fza, detadx, detadx_dt, eta
 use functions, only : linear_interp, interp_to_uv_grid, interp_to_w_grid
 use mpi
 implicit none
@@ -536,6 +516,7 @@ character(*), parameter :: sub_name = mod_name // '.turbines_forcing'
 real(rprec), pointer :: p_u_d => null(), p_u_d_T => null(), p_f_n => null()
 real(rprec), pointer :: p_Ct_prime => null()
 integer, pointer :: p_icp => null(), p_jcp => null(), p_kcp => null()
+real(rprec), pointer :: p_omegax => null(), p_omegay => null(), p_omegaz => null()
 
 integer :: fid
 
@@ -576,15 +557,26 @@ end do
 ! Recompute the turbine position if theta1 or theta2 can change
 if (dyn_theta1 .or. dyn_theta2) call turbines_nodes
 
-! Recomputing the unit normal ve
-if (offshore_theta2) then
+if (offshore_angles) then
+        do s = 1,nloc
+             wind_farm%turbine(s)%theta2 = detadx(wind_farm%turbine(s)%xloc,     &
+                                  wind_farm%turbine(s)%yloc)*180/pi
 
-call turbines_nodes
+             wind_farm%turbine(s)%omegax = 0.0_rprec
+             wind_farm%turbine(s)%omegay = detadx_dt(wind_farm%turbine(s)%xloc,   &
+                                  wind_farm%turbine(s)%yloc)
+             wind_farm%turbine(s)%omegaz = 0.0_rprec
+        end do
+        
+        call turbines_nodes
+else
+        do s = 1,nloc
+             wind_farm%turbine(s)%omegax = 0.0_rprec
+             wind_farm%turbine(s)%omegay = 0.0_rprec
+             wind_farm%turbine(s)%omegaz = 0.0_rprec
+        end do
 
-
-
-end if 
-
+end if
 
 
 !Each processor calculates the weighted disk-averaged velocity
@@ -593,37 +585,25 @@ u_vel_center = 0._rprec
 v_vel_center = 0._rprec
 w_vel_center = 0._rprec
 do s=1,nloc
-    ! Calculate total disk-averaged velocity for each turbine
-    ! (current, instantaneous) in the normal direction by integrating the
-    ! velocity times the indicator function
-    if (offshore_theta2) then
+    !set pointers for omega
+    p_omegax => wind_farm%turbine(s)%omegax
+    p_omegay => wind_farm%turbine(s)%omegay
+    p_omegaz => wind_farm%turbine(s)%omegaz
+
     do l=1,wind_farm%turbine(s)%num_nodes
         i2 = wind_farm%turbine(s)%nodes(l,1)
         j2 = wind_farm%turbine(s)%nodes(l,2)
         k2 = wind_farm%turbine(s)%nodes(l,3)
-       
-        u_vel_disk(i2,j2,k2) = (omega_y*rz_l(i2,j2,k2) - omega_z*ry_l(i2,j2,k2))
-        v_vel_disk(i2,j2,k2) = -(omega_x*rz_l(i2,j2,k2) - omega_z*rx_l(i2,j2,k2))
-        w_vel_disk(i2,j2,k2) = (omega_x*ry_l(i2,j2,k2) - omega_y*rx_l(i2,j2,k2))
-        
+
+        u_vel_disk(i2,j2,k2) = (p_omegay*rz_l(i2,j2,k2) - p_omegaz*ry_l(i2,j2,k2))
+        v_vel_disk(i2,j2,k2) = -(p_omegax*rz_l(i2,j2,k2) - p_omegaz*rx_l(i2,j2,k2))
+        w_vel_disk(i2,j2,k2) = (p_omegax*ry_l(i2,j2,k2) - p_omegay*rx_l(i2,j2,k2))
+
         disk_avg_vel(s) = disk_avg_vel(s)                                        &
             + dx*dy*dz*wind_farm%turbine(s)%ind(l)                               &
             * ( wind_farm%turbine(s)%nhat(1)*(u(i2,j2,k2)-u_vel_disk(i2,j2,k2))  &
             + wind_farm%turbine(s)%nhat(2)*(v(i2,j2,k2)-v_vel_disk(i2,j2,k2))    &
             + wind_farm%turbine(s)%nhat(3)*(w_uv(i2,j2,k2)-w_vel_disk(i2,j2,k2)) )
-    end do
-    end if
-
-
-    do l=1,wind_farm%turbine(s)%num_nodes
-        i2 = wind_farm%turbine(s)%nodes(l,1)
-        j2 = wind_farm%turbine(s)%nodes(l,2)
-        k2 = wind_farm%turbine(s)%nodes(l,3)
-        disk_avg_vel(s) = disk_avg_vel(s)                                      &
-            + dx*dy*dz*wind_farm%turbine(s)%ind(l)                             &
-            * ( wind_farm%turbine(s)%nhat(1)*u(i2,j2,k2)                       &
-            + wind_farm%turbine(s)%nhat(2)*v(i2,j2,k2)                         &
-            + wind_farm%turbine(s)%nhat(3)*w_uv(i2,j2,k2) )
     end do
 
     ! Set pointers
@@ -684,7 +664,8 @@ do s=1,nloc
         write( forcing_fid(s), *) total_time_dim, u_vel_center(s),         &
             v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,            &
             wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,      &
-            p_Ct_prime
+            p_Ct_prime, jt_total, eta(wind_farm%turbine(s)%xloc,           &
+            wind_farm%turbine(s)%yloc)
     end if
 
 
@@ -844,7 +825,7 @@ if (read_param) then
         nloc = num_x*num_y
         call error(sub_name, param_dat // 'must have num_x*num_y lines')
     else if (nloc > num_x*num_y) then
-        call warn(sub_name, param_dat // ' has more than num_x*num_y lines. '  &
+    call warn(sub_name, param_dat // ' has more than num_x*num_y lines. '  &
                   // 'Only reading first num_x*num_y lines')
     end if
 

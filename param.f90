@@ -42,7 +42,7 @@ character(:), allocatable :: path
 ! character(:), allocatable :: checkpoint_file
 ! character(:), allocatable :: checkpoint_tavg_file
 character(:), allocatable :: checkpoint_file
-character(:), allocatable :: checkpoint_spectrum
+character(:), allocatable :: checkpoint_wave_spectrum
 ! character(*), parameter :: checkpoint_tavg_file = path // 'tavg.out'
 ! character(*), parameter :: checkpoint_spectra_file = path // 'spectra.out'
 #ifdef PPWRITE_BIG_ENDIAN
@@ -179,25 +179,19 @@ logical :: inilag = .true.
 integer :: lbc_mom = 1
 integer :: ubc_mom = 0
 
-! Wave Parameters (nondimensional)
-! These would only be used by the EQMSG wall model (case 4)
-logical :: wave_spec = .true.
+! Wave Parameters (nondimensional except for the spec ones)
+! These would only be used by the MOSD wall model (case 4)
+integer :: wave_type = 1
 logical :: worb = .false.
+logical :: uns_mosd = .false.
 real(rprec) :: alpha_spec = 0.0267_rprec
 real(rprec) :: wp_spec = 3.6708_rprec
 real(rprec) :: kp_spec = 1.38_rprec
 real(rprec) :: theta_main = 0.0_rprec
-
+real(rprec) :: L_platform = 0.0_rprec
 real(rprec) :: amp = 0.0001_rprec 
-real(rprec) :: amp2 = 0.0001_rprec
 real(rprec) :: wave_n = 6.2831_rprec
-real(rprec) :: wave_n2 = 6.2831_rprec
-real(rprec) :: phase_velx = 7.0_rprec
-real(rprec) :: phase_vely = 7.0_rprec
 real(rprec) :: wave_freq = 120.3100_rprec
-real(rprec) :: wave_freq2 = 120.3100_rprec
-real(rprec) :: cd = 1_rprec
-
 
 ! Prescribe bottom and top wall streamwise velocity
 ! Only for DNS (sgs=.false.) and full channel (lbc_mom = ubc_mom = 1)
@@ -294,5 +288,13 @@ real(rprec), allocatable, dimension(:) :: zplane_loc
 ! records phase-averaged data to files
 logical :: pavg_calc = .false.
 integer :: pavg_tstart = 1, pavg_tend = 50000, pavg_nbins = 100
+
+! wave instantaneous output
+logical :: waveplane_calc=.false.
+integer :: waveplane_nstart=10000, waveplane_nend=50000, waveplane_nskip=10000
+
+! mosd instantaneous output
+logical :: mosdplane_calc=.false.
+integer :: mosdplane_nstart=10000, mosdplane_nend=50000, mosdplane_nskip=10000
 
 end module param

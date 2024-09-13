@@ -27,7 +27,7 @@ subroutine press_stag_array()
 use types, only : rprec
 use param
 use messages
-use sim_param, only : u, v, w, divtz, p, dpdx, dpdy, dpdz, ddtw_orb
+use sim_param, only : u, v, w, divtz, p, dpdx, dpdy, dpdz
 use fft
 use emul_complex, only : OPERATOR(.MULI.)
 
@@ -116,11 +116,11 @@ call dfftw_execute_dft_r2c(forw, rH_z(:,:,nz), rH_z(:,:,jz))
 if (coord == 0) then
    !The lower BC for pressure was changed to include dw_orb/dt (ddtw_orb) 
    !which is defined in the forcing.f90. MA 06/29/2023 
-if (worb) then
-   rbottomw(:,:) = const * (divtz(:,:,1) + ddtw_orb(:,:))
-else   
+!if (worb) then
+!   rbottomw(:,:) = const * (divtz(:,:,1) + ddtw_orb(:,:))
+!else   
    rbottomw(:,:) = const * divtz(:,:,1)
-end if     
+!end if     
    call dfftw_execute_dft_r2c(forw, rbottomw, rbottomw )
 end if
 

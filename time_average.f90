@@ -299,7 +299,7 @@ use param, only : ubc_mom, lbc_mom, coord, nproc, dz, nx, ny
 use sgs_param, only : Cs_opt2
 use sim_param, only : u, v, w, p
 use sim_param, only : txx, txy, tyy, txz, tyz, tzz
-use sim_param, only : eqmxz, wpmxz, eqmyz, wpmyz
+use sim_param, only : eqmxz, s_wpmxz, eqmyz, s_wpmyz
 use sim_param, only : detadx, u_orb, divtz
 use sim_param, only : dudy, dudz, dvdx, dvdz, dwdx, dwdy, dpdz, dvdy, dwdz
 use sim_param, only : cc_z, dpdx, divtx, RHSx, RHSx_f, v_omegaz, u_omegay, dtxdx, dtydy, dtzdz
@@ -504,9 +504,9 @@ this%txz(:,:,:) = this%txz(:,:,:) + txz(1:nx,1:ny,:)*this%dt    !! w grid
 this%tyz(:,:,:) = this%tyz(:,:,:) + tyz(1:nx,1:ny,:)*this%dt    !! w grid
 
 this%eqmxz(:,:) = this%eqmxz(:,:) + eqmxz(1:nx,1:ny)*this%dt    !! 2D Data at 1st grid point (w grid)
-this%wpmxz(:,:) = this%wpmxz(:,:) + wpmxz(1:nx,1:ny)*this%dt       !! 2D Data at 1st grid point (w grid)
+this%wpmxz(:,:) = this%wpmxz(:,:) + s_wpmxz(1:nx,1:ny)*this%dt       !! 2D Data at 1st grid point (w grid)
 this%eqmyz(:,:) = this%eqmyz(:,:) + eqmyz(1:nx,1:ny)*this%dt    !! 2D Data at 1st grid point (w grid)
-this%wpmyz(:,:) = this%wpmyz(:,:) + wpmyz(1:nx,1:ny)*this%dt
+this%wpmyz(:,:) = this%wpmyz(:,:) + s_wpmyz(1:nx,1:ny)*this%dt
 
 this%pres_real(:,:,:) = this%pres_real(:,:,:) + pres_real(1:nx,1:ny,:)*this%dt
 this%p(:,:,:) = this%p(:,:,:) + p(1:nx,1:ny,:)*this%dt

@@ -45,7 +45,7 @@ save
 private
 
 public jt_total, openfiles, energy, output_loop, output_final, output_init,    &
-    write_tau_wall_bot, write_tau_wall_top, write_wave, write_tau_comp
+    write_tau_wall_bot, write_tau_wall_top, write_wave, write_debug
 
 ! Where to end with nz index.
 integer :: nz_end
@@ -163,34 +163,24 @@ close(2)
 end subroutine write_wave
 
 !*******************************************************************************
-subroutine write_tau_comp()
+subroutine write_debug()
 !*******************************************************************************
-use param ,only: total_time, wbase
-use sim_param ,only: unsxz, unsyz, dgrad_etadt, CdotGradGradeta, ur_mag_wpm,   &
-                     grad_eta_mag, wpmxz, wpmyz, eqmxz, eqmyz, H_wpm, nx_wpm,  &
-                     ny_wpm, uns_convec_x1, uns_convec_x2, uns_convec_y1,      &
-                     uns_convec_y2, corr_1, corr_2, corr_3, corr_4, corr_5, corr_6
+use param ,only: total_time, wbase, nx, ny
+use sim_param ,only: corr_1, corr_2, corr_3, corr_4, corr_5, corr_6
 implicit none
 
 
-open(2,file=path // 'output/tau_comp.dat', status='unknown',               &
+open(2,file=path // 'output/debug.dat', status='unknown',               &
     form='formatted', position='append')
 
 !! one time header output
-if (jt_total==wbase) write(2,*)  'total_time,unsxz, unsyz,wpmxz, wpmyz, eqmxz, &
-eqmyz, unsxz_p, unsyz_p, dgrad_etadt, CdotGradGradeta, ur_mag_wpm,grad_eta_mag, &
-x1, cor1, cor2, cor3, cor4, cor5, cor6'
+if (jt_total==wbase) write(2,*)  'total_time, cor1, cor2, cor3, cor4, cor5, cor6'
 
-write(2,*) total_time, sum(unsxz(:,:))/(nx*ny), sum(unsyz(:,:))/(nx*ny),       &
-    sum(wpmxz(:,:))/(nx*ny), sum(wpmyz(:,:))/(nx*ny), sum(eqmxz(:,:))/(nx*ny), &
-    sum(eqmyz(:,:))/(nx*ny), unsxz(nx/2,ny/2), unsyz(nx/2,ny/2),               &
-    dgrad_etadt(nx/2,ny/2), CdotGradGradeta(nx/2,ny/2), ur_mag_wpm(nx/2,ny/2), &
-    grad_eta_mag(nx/2,ny/2), uns_convec_x1(nx/2,ny/2), corr_1(nx/2,ny/2),      &
-    corr_2(nx/2,ny/2), corr_3(nx/2,ny/2), corr_4(nx/2,ny/2), corr_5(nx/2,ny/2),&
-    corr_6(nx/2,ny/2)
+write(2,*) total_time, corr_1(nx/2,ny/2),corr_2(nx/2,ny/2), corr_3(nx/2,ny/2), &
+           corr_4(nx/2,ny/2), corr_5(nx/2,ny/2),corr_6(nx/2,ny/2)
 close(2)
 
-end subroutine write_tau_comp
+end subroutine write_debug
 
 
 !*******************************************************************************
@@ -201,7 +191,6 @@ use param ,only: jt_total, total_time, total_time_dim, dt, dt_dim, wbase
 use param ,only: L_x, z_i, u_star, nx, ny
 use functions ,only: get_tau_wall_bot, get_eqm_wall_bot, get_wpm_wall_bot, &
                      get_unswpm_wall_bot
-use sim_param ,only: unsxz, unsyz, dgrad_etadt, CdotGradGradeta, ur_mag_wpm, grad_eta_mag
 use sim_param ,only: Cx_wave, Cy_wave
 implicit none
 
@@ -605,6 +594,9 @@ use param, only : xplane_calc, xplane_nstart, xplane_nend, xplane_nskip
 use param, only : yplane_calc, yplane_nstart, yplane_nend, yplane_nskip
 use param, only : zplane_calc, zplane_nstart, zplane_nend, zplane_nskip
 use param, only : pavg_calc, pavg_tstart, pavg_tend
+
+use param, only : waveplane_calc, waveplane_nstart, waveplane_nend, waveplane_nskip
+use param, only : mosdplane_calc, mosdplane_nstart, mosdplane_nend, mosdplane_nskip
 implicit none
 
 ! Determine if we are to checkpoint intermediate times
@@ -754,6 +746,41 @@ if (pavg_calc) then
     end if
 end if
 
+if(waveplane_calc) then
+    if (jt_total >= waveplane_nstart .and. jt_total <= waveplane_nend .and.          &
+        ( mod(jt_total-waveplane_nstart,waveplane_nskip)==0) ) then
+        if (jt_total == waveplane_nstart) then
+            if (coord == 0) then
+                write(*,*) '-------------------------------'
+                write(*,"(1a,i9,1a,i9)")                                       &
+                    'Writing instantaneous wave plane data from ',          &
+                    waveplane_nstart, ' to ', waveplane_nend
+                write(*,"(1a,i9)") 'Iteration skip:', waveplane_nskip
+                write(*,*) '-------------------------------'
+            end if
+        end if
+
+        call inst_write(6)
+    end if
+end if
+
+if(mosdplane_calc) then
+    if (jt_total >= mosdplane_nstart .and. jt_total <= mosdplane_nend .and.          &
+        ( mod(jt_total-mosdplane_nstart,mosdplane_nskip)==0) ) then
+        if (jt_total == mosdplane_nstart) then
+            if (coord == 0) then
+                write(*,*) '-------------------------------'
+                write(*,"(1a,i9,1a,i9)")                                       &
+                    'Writing instantaneous mosd plane data from ',          &
+                    mosdplane_nstart, ' to ', mosdplane_nend
+                write(*,"(1a,i9)") 'Iteration skip:', mosdplane_nskip
+                write(*,*) '-------------------------------'
+            end if
+        end if
+
+        call inst_write(7)
+    end if
+end if
 
 end subroutine output_loop
 
@@ -769,6 +796,8 @@ subroutine inst_write(itype)
 !   x-planes : itype=3
 !   y-planes : itype=4
 !   z-planes : itype=5
+!   wave     : itype=6
+!   mosd     : itype=7
 !
 ! For the points and planar data, this subroutine writes using the
 ! locations specfied from the param module.
@@ -786,9 +815,10 @@ use grid_m
 use sim_param, only : u, v, w, p, dpdx
 use sim_param, only : dwdy, dwdx, dvdx, dudy, dudx, dwdz, txx, txz, dudz
 use sim_param, only : txz, tyz
-use sim_param, only : eqmxz, eqmyz, wpmxz, wpmyz, eta, detadx, detady, detadt,   &
-    u_orb, w_orb, ddtw_orb, ur_eqm, vr_eqm,  Cx_wave, Cy_wave, ur_wpm, vr_wpm,   &
-    phi, eta_spectrum, S_kx_ky, K_wave, D_spread, eta_hat_o, unsxz, unsyz
+use sim_param, only : eqmxz, eqmyz, s_wpmxz, s_wpmyz, uns_wpmxz, uns_wpmyz
+use sim_param, only : eta, detadx, detady, detadt, Cx_wave, Cy_wave, phi,  &
+                      S_kx_ky, K_wave, D_spread, eta_hat_o, eta_filter,    &
+                      u_orb, w_orb
 use functions, only : interp_to_w_grid
 use derivatives
 
@@ -804,7 +834,9 @@ use sim_param, only : fx, fy, fz, fxa, fya, fza
 #ifdef PPSCALARS
 use scalars, only : theta
 #endif
-
+#ifdef PPTURBINES
+use sim_param, only : fxa, fya, fza
+#endif
 implicit none
 
 integer, intent(in) :: itype
@@ -822,15 +854,6 @@ real(rprec), dimension(:,:,:), allocatable :: pres_real, dpdz_real
 real(rprec), dimension(:,:,:), allocatable :: w_vorty, v_vortz, dpdx_uv, dtxzdz_w2
 real(rprec), dimension(:,:,:), allocatable :: dpdx_w, v_w, vortz_uv, dtxzdz_w
 real(rprec), dimension(:,:,:), allocatable :: dtxzdz_uv, wdudz, wdwdx, u_w
-
-! FFT check
-integer :: jz, jx, jy
-integer*8 plan
-real(rprec) :: u_xyAvg
-real(rprec), dimension(:,:,:), allocatable :: u_fluc_2D, u_fluc_ifft_2D
-real(rprec), dimension(:,:), allocatable :: u_fluc, u_fluc_ifft
-complex(rprec), dimension(:,:), allocatable :: u_fluc_hat
-include'fftw3.f'
 
 #ifndef PPCGNS
 character(64) :: bin_ext
@@ -863,7 +886,7 @@ w_uv = interp_to_uv_grid(w(1:nx,1:ny,lbz:nz), lbz)
 
 !  Instantaneous velocity sampled at point
 if(itype==1) then
-    do n = 1, point_nloc
+        do n = 1, point_nloc
         ! Common file name for all output types
         call string_splice(fname, path // 'output/vel.x-', point_loc(n)%xyz(1),&
             '.y-', point_loc(n)%xyz(2), '.z-', point_loc(n)%xyz(3), '.dat')
@@ -885,9 +908,6 @@ if(itype==1) then
 !  Instantaneous write for entire domain
 elseif(itype==2) then
 
-!!******* MAKE SURE TO ERASE THIS AFTER SPECTRUM TRIALS
-if (rest_print) then
-!!**************************
     ! Common file name for all output types
     call string_splice(fname, path //'output/vel.', jt_total)
 
@@ -913,6 +933,21 @@ if (rest_print) then
     close(13)
 #endif
 
+#ifdef PPTURBINES
+    ! Common file name for all output types
+    call string_splice(fname, path //'output/force.', jt_total)
+
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+     access='direct', recl=nx*ny*nz*rprec)
+    write(13,rec=1) fxa(:nx,:ny,1:nz)
+    write(13,rec=2) fya(:nx,:ny,1:nz)
+    write(13,rec=3) fza(:nx,:ny,1:nz)
+    close(13)
+#endif
+
+if(rest_print) then
     ! Compute vorticity
     allocate(vortx(nx,ny,lbz:nz), vorty(nx,ny,lbz:nz), vortz(nx,ny,lbz:nz))
     allocate(vortz_uv(nx,ny,lbz:nz))
@@ -993,106 +1028,6 @@ if (rest_print) then
 
      deallocate(pres_real)
 
-!*********Calculating the u' and doing fft and ifft (to check)**********!
-allocate(u_fluc(nx,ny))
-allocate(u_fluc_hat(nx,ny))
-allocate(u_fluc_ifft(nx,ny))
-allocate(u_fluc_2D(nx,ny,lbz:nz))
-allocate(u_fluc_ifft_2D(nx,ny,lbz:nz))
-
-do jz = 1,nz
-
-u_xyAvg = 0._rprec
-    do jx = 1, nx
-       do jy = 1, ny
-       u_xyAvg = u_xyAvg + u(jx,jy,jz)
-       enddo
-    enddo
-u_xyAvg =  u_xyAvg/(nx*ny)
-
-! Calculating the fluctuating velocity u'
-u_fluc(:,:) = u(:,:,jz) - u_xyAvg
-
-call dfftw_plan_dft_r2c_2d(plan, nx, ny, u_fluc, u_fluc_hat, FFTW_ESTIMATE)
-call dfftw_execute_dft_r2c(plan, u_fluc, u_fluc_hat)
-call dfftw_destroy_plan(plan)
-
-call dfftw_plan_dft_c2r_2d(plan, nx, ny, u_fluc_hat, u_fluc_ifft, FFTW_ESTIMATE)
-call dfftw_execute_dft_c2r(plan,u_fluc_hat, u_fluc_ifft)
-call dfftw_destroy_plan(plan)
-
-u_fluc_2D(:,:,jz) = u_fluc(:,:)
-u_fluc_ifft_2D(:,:,jz) = u_fluc_ifft(:,:)
-
-end do
-
-   ! Common file name for all output types
-    call string_splice(fname, path //'output/u_fluc_data.', jt_total)
-    
-   ! Write binary Output
-   call string_concat(fname, bin_ext)
-   open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
-       access='direct', recl=nx*ny*nz*rprec)
-    write(13,rec=1) u_fluc_2D(:nx,:ny,1:nz)
-    write(13,rec=2) u_fluc_ifft_2D(:nx,:ny,1:nz)
-    close(13)
-
-deallocate( u_fluc, u_fluc_hat, u_fluc_ifft)
-deallocate(u_fluc_2D, u_fluc_ifft_2D)
-
-!!********** ALSO THIS
-else
-!!********************
-
-!*********Output of Ocean Wave Spectrum**********!
-if (coord==0) then
-
-! Common file name for all output types
-    call string_splice(fname, path //'output/wave_spectrum.', jt_total)
-
-   ! Write binary Output
-   call string_concat(fname, bin_ext)
-   open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
-       access='direct', recl=nx*ny*1*rprec)
-    write(13,rec=1) phi(:nx,:ny)
-    write(13,rec=2) eta_spectrum(:nx,:ny)
-    write(13,rec=3) eta(:nx,:ny)
-    write(13,rec=4) detadx(:nx,:ny)
-    write(13,rec=5) detady(:nx,:ny)
-    write(13,rec=6) detadt(:nx,:ny)
-    write(13,rec=7) u_orb(:nx,:ny)
-    write(13,rec=8) w_orb(:nx,:ny)
-    write(13,rec=9) ddtw_orb(:nx,:ny)
-    write(13,rec=10) Cx_wave(:nx,:ny)
-    write(13,rec=11) Cy_wave(:nx,:ny)
-    write(13,rec=12) S_kx_ky(:nx,:ny)
-    write(13,rec=13) D_spread(:nx,:ny)
-    write(13,rec=14) K_wave(:nx,:ny)
-    write(13,rec=15) real(eta_hat_o(:nx,:ny))
-    close(13)
-
-    
-! Common file name for all output types
-    call string_splice(fname, path //'output/mosd.', jt_total)
-
-    ! Write binary Output
-    call string_concat(fname, bin_ext)
-    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
-        access='direct', recl=nx*ny*1*rprec)
-    write(13,rec=1) eqmxz(:nx,:ny)
-    write(13,rec=2) eqmyz(:nx,:ny)
-    write(13,rec=3) wpmxz(:nx,:ny)
-    write(13,rec=4) wpmyz(:nx,:ny)
-    write(13,rec=5) ur_eqm(:nx,:ny)
-    write(13,rec=6) vr_eqm(:nx,:ny)
-    write(13,rec=7) ur_wpm(:nx,:ny)
-    write(13,rec=8) vr_wpm(:nx,:ny)
-    write(13,rec=9) unsxz(:nx,:ny)
-    write(13,rec=10) unsyz(:nx,:ny)
-    close(13)
-
-end if 
-
 #ifdef PPSCALARS
     ! Common file name for all output types
     call string_splice(fname, path //'output/theta.', jt_total)
@@ -1113,10 +1048,8 @@ end if
     close(13)
 #endif
 #endif
+end if
 
-!!!!!! THIS TOO
-end if 
-!!!!!!!
 !  Write instantaneous x-plane values
 elseif(itype==3) then
 
@@ -1272,6 +1205,50 @@ elseif (itype==5) then
 #endif
     end do
     deallocate(ui,vi,wi)
+
+!  Instantaneous write for wave data
+elseif(itype==6) then
+
+    ! Common file name for all output types
+    call string_splice(fname, path //'output/wave.', jt_total)
+
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+        access='direct', recl=nx*ny*1*rprec)
+    write(13,rec=1) eta(:nx,:ny)
+    write(13,rec=2) detadx(:nx,:ny)
+    write(13,rec=3) detady(:nx,:ny)
+    write(13,rec=4) detadt(:nx,:ny)
+    write(13,rec=5) u_orb(:nx,:ny)
+    write(13,rec=6) w_orb(:nx,:ny)
+    write(13,rec=7) Cx_wave(:nx,:ny)
+    write(13,rec=8) Cy_wave(:nx,:ny)
+    write(13,rec=9) K_wave(:nx,:ny)
+    write(13,rec=10) D_spread(:nx,:ny)
+    write(13,rec=11) phi(:nx,:ny)
+    write(13,rec=12) S_kx_ky(:nx,:ny)
+    write(13,rec=13) eta_filter(:nx,:ny)
+    close(13)
+
+!  Instantaneous write for wave data
+elseif(itype==7) then
+
+    ! Common file name for all output types
+    call string_splice(fname, path //'output/mosd.', jt_total)
+
+    ! Write binary Output
+    call string_concat(fname, bin_ext)
+    open(unit=13, file=fname, form='unformatted', convert=write_endian,        &
+        access='direct', recl=nx*ny*1*rprec)
+    write(13,rec=1) eqmxz(:nx,:ny)
+    write(13,rec=2) eqmyz(:nx,:ny)
+    write(13,rec=3) s_wpmxz(:nx,:ny)
+    write(13,rec=4) s_wpmyz(:nx,:ny)
+    write(13,rec=5) uns_wpmxz(:nx,:ny)
+    write(13,rec=6) uns_wpmyz(:nx,:ny)
+    close(13)
+
 else
     write(*,*) 'Error: itype not specified properly to inst_write!'
     stop
@@ -1392,7 +1369,7 @@ use param, only : comm, ierr
 use sim_param, only : u, v, w, RHSx, RHSy, RHSz
 use sgs_param, only : Cs_opt2, F_LM, F_MM, F_QN, F_NN
 use param, only : jt_total, total_time, total_time_dim, dt,                    &
-    use_cfl_dt, cfl, write_endian, wave_spec
+    use_cfl_dt, cfl, write_endian, wave_type
 use cfl_util, only : get_max_cfl
 use string_util, only : string_concat
 #if PPUSE_TURBINES
@@ -1402,7 +1379,7 @@ use turbines, only : turbines_checkpoint
 use scalars, only : scalars_checkpoint
 #endif
 use coriolis
-use wave_spectrum, only : osepectrum_checkpoint
+use wave_spectrum, only : wave_spectrum_checkpoint
 
 ! HIT Inflow
 #ifdef PPHIT
@@ -1472,10 +1449,9 @@ call scalars_checkpoint()
 
 call coriolis_finalize()
 
-if (wave_spec .and. coord == 0) then
-   call osepectrum_checkpoint()
+if (wave_type==1 .and. coord == 0) then
+   call wave_spectrum_checkpoint()
 end if
-
 
 !  Update total_time.dat after simulation
 if (coord == 0) then

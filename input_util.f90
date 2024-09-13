@@ -453,10 +453,12 @@ do
                 Read (buff(equal_pos+1:), *) lbc_mom
             case ('UBC_MOM')
                 Read (buff(equal_pos+1:), *) ubc_mom
-            case ('WAVE_SPEC')
-                Read (buff(equal_pos+1:), *) wave_spec
+            case ('WAVE_TYPE')
+                Read (buff(equal_pos+1:), *) wave_type
             case ('WORB')
                 Read (buff(equal_pos+1:), *) worb
+            case ('UNS_MOSD')
+                Read (buff(equal_pos+1:), *) uns_mosd
             case ('ALPHA_SPEC')
                 Read (buff(equal_pos+1:), *) alpha_spec
             case ('WP_SPEC')
@@ -467,22 +469,10 @@ do
                 Read (buff(equal_pos+1:), *) theta_main
             case ('AMP')
                 Read (buff(equal_pos+1:), *) amp
-            case ('AMP2')
-                Read (buff(equal_pos+1:), *) amp2
             case ('WAVE_N')
                 Read (buff(equal_pos+1:), *) wave_n
-            case ('WAVE_N2')
-                Read (buff(equal_pos+1:), *) wave_n2
-            case ('PHASE_VELX')
-                Read (buff(equal_pos+1:), *) phase_velx
-            case ('PHASE_VELY')
-                Read (buff(equal_pos+1:), *) phase_vely
             case ('WAVE_FREQ')
                 Read (buff(equal_pos+1:), *) wave_freq
-            case ('WAVE_FREQ2')
-                Read (buff(equal_pos+1:), *) wave_freq2
-            case ('CD')
-                Read (buff(equal_pos+1:), *) cd
             case ('UBOT')
                 Read (buff(equal_pos+1:), *) ubot
             case ('UTOP')
@@ -689,6 +679,22 @@ do
                 read (buff(equal_pos+1:), *) pavg_tend
             case ('PAVG_NBINS')
                 read (buff(equal_pos+1:), *) pavg_nbins
+            case ('WAVEPLANE_CALC')
+                read (buff(equal_pos+1:), *) waveplane_calc
+            case ('WAVEPLANE_NSTART')
+                read (buff(equal_pos+1:), *) waveplane_nstart
+            case ('WAVEPLANE_NEND')
+                read (buff(equal_pos+1:), *) waveplane_nend
+            case ('WAVEPLANE_NSKIP')
+                read (buff(equal_pos+1:), *) waveplane_nskip
+           case ('MOSDPLANE_CALC')
+                read (buff(equal_pos+1:), *) mosdplane_calc
+            case ('MOSDPLANE_NSTART')
+                read (buff(equal_pos+1:), *) mosdplane_nstart
+            case ('MOSDPLANE_NEND')
+                read (buff(equal_pos+1:), *) mosdplane_nend
+            case ('MOSDPLANE_NSKIP')
+                read (buff(equal_pos+1:), *) mosdplane_nskip
             case default
                 if (coord == 0) write(*,*) 'Found unused data value in '       &
                     // block_name // ' block: ' // buff(1:equal_pos-1)
@@ -825,6 +831,10 @@ do
                 read (buff(equal_pos+1:), *) theta1_all
             case ('THETA2_ALL')
                 read (buff(equal_pos+1:), *) theta2_all
+            case ('OFFSHORE_ANGLES')
+                Read (buff(equal_pos+1:), *) offshore_angles
+            case ('L_PLATFORM')
+                Read (buff(equal_pos+1:), *) L_platform
             case ('CT_PRIME')
                 read (buff(equal_pos+1:), *) Ct_prime
             case ('READ_PARAM')

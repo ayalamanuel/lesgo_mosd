@@ -104,10 +104,7 @@ write(2,i_fmt) 'ubc_mom : ', ubc_mom
 write(2,l_fmt) 'worb : ', worb
 write(2,f_fmt) 'amp : ', amp
 write(2,f_fmt) 'wave_n : ', wave_n
-write(2,f_fmt) 'phase_velx : ', phase_velx
-write(2,f_fmt) 'phase_vely : ', phase_vely
 write(2,f_fmt) 'wave_freq : ', wave_freq
-write(2,f_fmt) 'cd : ', cd
 write(2,f_fmt) 'ubot : ', ubot
 write(2,f_fmt) 'utop : ', utop
 write(2,f_fmt) 'zo : ', zo

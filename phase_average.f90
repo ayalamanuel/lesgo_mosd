@@ -34,6 +34,7 @@ type pavg_t
     real(rprec), dimension(:,:,:,:), allocatable :: txx, tyy, tzz, txy, txz, tyz
     real(rprec), dimension(:,:,:,:), allocatable :: dudx, dudy, dudz, &
        dvdx, dvdy, dvdz, dwdx, dwdy, dwdz, dpdz, dpdz_uv
+    real(rprec), dimension(:,:,:,:), allocatable ::  fx, fy, fz
     real(rprec), dimension(:), allocatable :: np
     real(rprec) :: time
     logical :: initialized = .false.
@@ -104,9 +105,12 @@ allocate( this%dwdz(1:nx,1:ny,1:nz,pavg_nbins) ); this%dwdz(:,:,:,:) = 0._rprec
 allocate( this%dpdz(1:nx,1:ny,1:nz,pavg_nbins) ); this%dpdz(:,:,:,:) = 0._rprec
 allocate( this%dpdz_uv(1:nx,1:ny,1:nz,pavg_nbins) ); this%dpdz_uv(:,:,:,:) = 0._rprec
 
-
 allocate( this%p(1:nx,1:ny,1:nz,pavg_nbins) ); this%p(:,:,:,:) = 0._rprec
 allocate( this%pres_real(1:nx,1:ny,1:nz,pavg_nbins) ); this%pres_real(:,:,:,:) = 0._rprec
+
+allocate( this%fx(1:nx,1:ny,1:nz,pavg_nbins) ); this%fx(:,:,:,:) = 0._rprec
+allocate( this%fy(1:nx,1:ny,1:nz,pavg_nbins) ); this%fy(:,:,:,:) = 0._rprec
+allocate( this%fz(1:nx,1:ny,1:nz,pavg_nbins) ); this%fz(:,:,:,:) = 0._rprec
 
 allocate( this%np(pavg_nbins)); this%np(:) = 0._rprec
 
@@ -163,6 +167,14 @@ else
     read(fid) this%dwdz
     read(fid) this%dpdz     
     read(fid) this%dpdz_uv   
+    
+    read(fid) this%p
+    read(fid) this%pres_real
+    
+    read(fid) this%fx
+    read(fid) this%fy
+    read(fid) this%fz
+
 
     close(fid)
 end if
@@ -187,6 +199,7 @@ use param, only : wave_freq,  pavg_tstart, pavg_nbins
 use sim_param, only : u, v, w, p
 use sim_param, only : dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz, dpdz
 use sim_param, only : txx, txy, tyy, txz, tyz, tzz
+use sim_param, only : fxa, fya, fza
 use functions, only : interp_to_uv_grid, interp_to_w_grid
 
 implicit none
@@ -261,6 +274,9 @@ call pavg_compute(this%time,dpdz_uv(1:nx,1:ny,1:nz),this%dpdz_uv)
 call pavg_compute(this%time,pres_real(1:nx,1:ny,1:nz),this%pres_real)
 call pavg_compute(this%time,p(1:nx,1:ny,1:nz),this%p)
 
+call pavg_compute(this%time,fxa(1:nx,1:ny,1:nz),this%fx)
+call pavg_compute(this%time,fya(1:nx,1:ny,1:nz),this%fy)
+call pavg_compute(this%time,fza(1:nx,1:ny,1:nz),this%fz)
 
 !if (coord==0) then
 !call pavg_compute_ws(this%time,-txz(1:nx,1:ny,1),this%twx)
@@ -377,7 +393,7 @@ class(pavg_t), intent(inout) :: this
 character(64) :: bin_ext
 
 character(64) :: fname_vel,fname_vel2,fname_tau,fname_sgs,fname_vgrad,fname_ws,&
-        fname_rs, fname_wave
+        fname_rs, fname_f
 
 real(rprec), allocatable, dimension(:,:,:,:) :: up2, vp2, wp2, upvp, upwp, vpwp, &
         upwp_uv, vpwp_uv,wpwp_uv
@@ -391,6 +407,7 @@ fname_vel2 = path // 'output/vel2_pavg'
 fname_tau = path // 'output/tau_pavg'
 fname_vgrad = path // 'output/vgrad_pavg'
 fname_rs = path // 'output/rs_pavg'
+fname_f = path // 'output/f_pavg'
 !fname_ws = path // 'output/ws_pavg.bin'
 
 call string_splice(bin_ext, '.c', coord, '.bin')
@@ -400,6 +417,7 @@ call string_concat(fname_vel2, bin_ext)
 call string_concat(fname_tau, bin_ext)
 call string_concat(fname_vgrad, bin_ext)
 call string_concat(fname_rs, bin_ext)
+call string_concat(fname_f, bin_ext)
 
 ! Final checkpoint all restart data
 call this%checkpoint()
@@ -445,7 +463,12 @@ do jz = 1,nz
 
     this%p(jx,jy,jz,:) = this%p(jx,jy,jz,:) / this%np(:)
     this%pres_real(jx,jy,jz,:) = this%pres_real(jx,jy,jz,:) / this%np(:)
-  enddo
+ 
+    this%fx(jx,jy,jz,:) = this%fx(jx,jy,jz,:) / this%np(:)
+    this%fy(jx,jy,jz,:) = this%fy(jx,jy,jz,:) / this%np(:)
+    this%fz(jx,jy,jz,:) = this%fz(jx,jy,jz,:) / this%np(:)
+
+   enddo
  enddo
 enddo
 
@@ -544,6 +567,14 @@ write(fid,rec=7) upwp_uv(1:nx,1:ny,1:nz,1:pavg_nbins)
 write(fid,rec=8) vpwp_uv(1:nx,1:ny,1:nz,1:pavg_nbins)
 write(fid,rec=9) wpwp_uv(1:nx,1:ny,1:nz,1:pavg_nbins)
 close(fid)
+
+
+open(newunit=fid, file=fname_f, form='unformatted', convert=write_endian,        &
+    access='direct', recl=nx*ny*nz*pavg_nbins*rprec)
+write(fid,rec=1) this%fx(1:nx,1:ny,1:nz,1:pavg_nbins)
+write(fid,rec=2) this%fy(1:nx,1:ny,1:nz,1:pavg_nbins)
+write(fid,rec=3) this%fz(1:nx,1:ny,1:nz,1:pavg_nbins)
+close(fid)
 !
 !open(newunit=fid, file=fname_ws, form='unformatted', convert=write_endian,        &
 !    access='direct', recl=pavg_nbins*rprec)
@@ -620,6 +651,11 @@ write(fid) this%dpdz
 write(fid) this%dpdz_uv
 
 write(fid) this%p
+write(fid) this%pres_real
+
+write(fid) this%fx
+write(fid) this%fy
+write(fid) this%fz
 close(fid)
 
 end subroutine checkpoint

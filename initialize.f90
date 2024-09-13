@@ -28,7 +28,7 @@ use types, only : rprec
 use param, only : path
 use param, only : USE_MPI, coord, dt, jt_total, nsteps
 use param, only : use_cfl_dt, cfl, cfl_f, dt_dim, z_i, u_star
-use param, only : wave_spec
+use param, only : wave_type
 use iwmles
 use param, only : lbc_mom
 use sponge
@@ -140,6 +140,13 @@ call coriolis_init()
 !  Initialize variables used for output statistics and instantaneous data
 call output_init()
 
+! Initialize the ocean spectrum variables
+! This has to be before initializing turbines since it needs the ocean 
+! surface information
+if (wave_type == 1 .and. coord == 0) then
+call spectrum_calc()
+endif
+
 ! Initialize turbines
 #ifdef PPTURBINES
 call turbines_init()    ! must occur before initial is called
@@ -200,13 +207,6 @@ if( use_cfl_dt ) then
         dt = dt * huge(1._rprec) ! Force Euler advection (1st order)
         dt_dim = dt * z_i / u_star
     endif
-endif
-
-! Initialize the ocean spectrum variables
-if (wave_spec) then
-if (coord == 0 ) then
-call spectrum_calc()
-endif
 endif
 
 end subroutine initialize

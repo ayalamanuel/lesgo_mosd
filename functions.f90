@@ -939,7 +939,7 @@ function get_wpm_wall_bot() result(wpm_twall)
 ! This function provides plane-averaged value of wall stress from WPM
 use types, only: rprec
 use param, only : nx, ny
-use sim_param, only : wpmxz, wpmyz
+use sim_param, only :s_wpmxz, s_wpmyz
 
 implicit none
 real(rprec) :: wpm_twall, wpm_txsum, wpm_tysum
@@ -949,8 +949,8 @@ wpm_txsum = 0._rprec
 wpm_tysum = 0._rprec
 do jx = 1, nx
 do jy = 1, ny
-    wpm_txsum = wpm_txsum + wpmxz(jx,jy)
-    wpm_tysum = wpm_tysum + wpmyz(jx,jy)
+    wpm_txsum = wpm_txsum + s_wpmxz(jx,jy)
+    wpm_tysum = wpm_tysum + s_wpmyz(jx,jy)
 enddo
 enddo
 
@@ -965,7 +965,7 @@ function get_unswpm_wall_bot() result(unswpm_twall)
 ! This function provides plane-averaged value of wall stress from WPM
 use types, only: rprec
 use param, only : nx, ny
-use sim_param, only : unsxz, unsyz
+use sim_param, only : uns_wpmxz, uns_wpmyz
 
 implicit none
 real(rprec) :: unswpm_twall, uns_txsum, uns_tysum
@@ -975,8 +975,8 @@ uns_txsum = 0._rprec
 uns_tysum = 0._rprec
 do jx = 1, nx
 do jy = 1, ny
-    uns_txsum = uns_txsum + unsxz(jx,jy)
-    uns_tysum = uns_tysum + unsyz(jx,jy)
+    uns_txsum = uns_txsum + uns_wpmxz(jx,jy)
+    uns_tysum = uns_tysum + uns_wpmyz(jx,jy)
 enddo
 enddo
 
@@ -1072,5 +1072,4 @@ end do
 close(fid)
 
 end function count_lines
-
 end module functions

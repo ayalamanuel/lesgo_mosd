@@ -31,7 +31,7 @@ use param
 use sim_param
 use grid_m
 use io, only : energy, output_loop, output_final, jt_total
-use io, only : write_tau_wall_bot, write_tau_wall_top, write_wave, write_tau_comp
+use io, only : write_tau_wall_bot, write_tau_wall_top, write_wave, write_debug
 use fft
 use derivatives, only : filt_da, ddz_uv, ddz_w
 use test_filtermodule
@@ -422,8 +422,8 @@ time_loop: do jt_step = nstart, nsteps
             write(*,'(a,E15.7)') '  Bot EQWM stress: ', get_eqm_wall_bot()
             write(*,'(a,E15.7)') '  Bot WPM stress: ', get_wpm_wall_bot()
             write(*,'(a,E15.7)') '  Bot UnsWPM stress: ', get_unswpm_wall_bot()
-            write(*,'(a,E15.7)') '  Bot UnsWPMxz stress: ', sum(unsxz(:,:))/(nx*ny)
-            write(*,'(a,E15.7)') '  Bot UnsWPMyz stress: ', sum(unsyz(:,:))/(nx*ny)
+            write(*,'(a,E15.7)') '  Bot UnsWPMxz stress: ', sum(uns_wpmxz(:,:))/(nx*ny)
+            write(*,'(a,E15.7)') '  Bot UnsWPMyz stress: ', sum(uns_wpmyz(:,:))/(nx*ny)
             write(*,'(a,E15.7)') '  uLES: ', get_uLES()
             write(*,'(a,E15.7)') '  Cx_max: ', maxval(Cx_wave(:,:))
             write(*,'(a,E15.7)') '  Cy_max: ', maxval(Cy_wave(:,:))
@@ -452,7 +452,7 @@ time_loop: do jt_step = nstart, nsteps
             write(*,'(a)') '==================================================='
             call write_tau_wall_bot()
             call write_wave()
-            call write_tau_comp()
+            call write_debug()
         end if
         if(coord == nproc-1) then
             call write_tau_wall_top()

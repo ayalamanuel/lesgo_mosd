@@ -3,6 +3,6 @@
 module load cmake/3.26.3
 module load fftw/3.3.10 
 cmake . -Bbld
-cmake --build bld
+cmake --build bld --parallel 16
 cp bld/lesgo* .
 

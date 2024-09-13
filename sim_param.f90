@@ -38,15 +38,17 @@ real(rprec), dimension(:,:,:), allocatable :: u, v, w,                         &
 
 real(rprec), target, dimension(:,:,:), allocatable :: p
 
-real(rprec), dimension(:,:), allocatable :: eqmxz, eqmyz, wpmxz, wpmyz, eta,   &
-    detadx, detady, detadt, u_orb, w_orb, ddtw_orb, ur_eqm, vr_eqm, Cx_wave,   &
-    Cy_wave, ur_wpm, vr_wpm, u_LES, ustar_lbc, grad_eta_mag, dgrad_etadt,      &
-    CdotGradGradeta, unsxz, unsyz, ur_mag_wpm, H_wpm, nx_wpm, ny_wpm,          &
-    uns_convec_x1, uns_convec_x2, uns_convec_y1, uns_convec_y2,                &
-    corr_1, corr_2, corr_3, corr_4, corr_5, corr_6, eta_filter
+real(rprec), dimension(:,:), allocatable :: eqmxz, eqmyz, s_wpmxz, s_wpmyz,    &
+    uns_wpmxz, uns_wpmyz, eta, detadx, detady, detadt, u_orb, w_orb, deta2dx2, &
+    deta2dy2, detadxdy, detadydx, eta_filter, grad_eta_mag, dgrad_etadt,       &
+    Cx_wave,Cy_wave, ur_mag_wpm, CdotGradGradeta, ur_mag_eqm, u_LES, ustar_lbc,&
+    detadx_dt, detady_dt
 
-real(rprec), dimension(:,:), allocatable :: K_wave, D_spread, phi,eta_spectrum,&
-     omega_wave, S_kx_ky, S_filter
+real(rprec), dimension(:,:), allocatable :: K_wave, D_spread, phi, omega_wave ,&
+    S_kx_ky, S_filter
+
+real(rprec), dimension(:,:), allocatable :: corr_1,corr_2, corr_3, corr_4,     &
+    corr_5, corr_6
 
 complex(rprec), dimension(:,:), allocatable :: eta_hat_o, eta_hat_o_filter
 
@@ -101,21 +103,30 @@ allocate ( dtzdz(ld, ny, lbz:nz) ); dtzdz = 0.0_rprec
 
 allocate ( eqmxz(nx, ny) ); eqmxz = 0.0_rprec
 allocate ( eqmyz(nx, ny) ); eqmyz = 0.0_rprec
-allocate ( wpmxz(nx, ny) ); wpmxz = 0.0_rprec
-allocate ( wpmyz(nx, ny) ); wpmyz = 0.0_rprec
+allocate ( s_wpmxz(nx, ny) ); s_wpmxz = 0.0_rprec
+allocate ( s_wpmyz(nx, ny) ); s_wpmyz = 0.0_rprec
+allocate ( uns_wpmxz(nx, ny) ); uns_wpmxz = 0.0_rprec
+allocate ( uns_wpmyz(nx, ny) ); uns_wpmyz = 0.0_rprec
 allocate ( eta(nx, ny) ); eta = 0.0_rprec
 allocate ( detadx(nx, ny) ); detadx = 0.0_rprec
 allocate ( detady(nx, ny) ); detady = 0.0_rprec
 allocate ( detadt(nx, ny) ); detadt = 0.0_rprec
 allocate ( u_orb(nx, ny) ); u_orb = 0.0_rprec
 allocate ( w_orb(nx, ny) ); w_orb = 0.0_rprec
-allocate ( ddtw_orb(nx,ny) ); ddtw_orb = 0.0_rprec
-allocate ( ur_eqm(ld,ny) ); ur_eqm = 0.0_rprec
-allocate ( vr_eqm(ld,ny) ); vr_eqm = 0.0_rprec
+allocate ( deta2dx2(nx, ny) ); deta2dx2 = 0.0_rprec
+allocate ( deta2dy2(nx, ny) ); deta2dy2 = 0.0_rprec
+allocate ( detadxdy(nx, ny) ); detadxdy = 0.0_rprec
+allocate ( detadydx(nx, ny) ); detadydx = 0.0_rprec
+allocate ( detadx_dt(nx, ny) ); detadx_dt = 0.0_rprec
+allocate ( detady_dt(nx, ny) ); detady_dt = 0.0_rprec
+allocate ( eta_filter(nx,ny) ); eta_filter = 0.0_rprec
+allocate ( grad_eta_mag(nx,ny) ); grad_eta_mag = 0.0_rprec
+allocate ( dgrad_etadt(nx,ny) ); dgrad_etadt = 0.0_rprec
 allocate ( Cx_wave(nx,ny) ); Cx_wave = 0.0_rprec
 allocate ( Cy_wave(nx,ny) ); Cy_wave = 0.0_rprec
-allocate ( ur_wpm(nx,ny) ); ur_wpm = 0.0_rprec
-allocate ( vr_wpm(nx,ny) ); vr_wpm = 0.0_rprec
+allocate ( ur_mag_wpm(nx,ny) ); ur_mag_wpm = 0.0_rprec
+allocate ( CdotGradGradeta(nx,ny) ); CdotGradGradeta = 0.0_rprec
+allocate ( ur_mag_eqm(nx,ny) ); ur_mag_eqm = 0.0_rprec
 allocate ( u_LES(nx,ny) ); u_LES = 0.0_rprec
 
 allocate ( K_wave(nx,ny) ); K_wave = 0.0_rprec
@@ -123,25 +134,10 @@ allocate ( D_spread(nx,ny) ); D_spread = 0.0_rprec
 allocate ( S_kx_ky(nx,ny) ); S_kx_ky = 0.0_rprec
 allocate ( S_filter(nx,ny) ); S_filter = 0.0_rprec
 allocate ( phi(nx,ny) ); phi = 0.0_rprec
-allocate ( eta_spectrum(nx,ny) ); eta_spectrum = 0.0_rprec
 allocate ( omega_wave(nx,ny) ); omega_wave = 0.0_rprec
 allocate ( eta_hat_o(nx,ny) ); eta_hat_o = 0.0_rprec
 allocate ( eta_hat_o_filter(nx,ny) ); eta_hat_o_filter = 0.0_rprec
-allocate ( eta_filter(nx,ny) ); eta_filter = 0.0_rprec
 
-allocate ( grad_eta_mag(nx,ny) ); grad_eta_mag = 0.0_rprec
-allocate ( dgrad_etadt(nx,ny) ); dgrad_etadt = 0.0_rprec
-allocate ( CdotGradGradeta(nx,ny) ); CdotGradGradeta = 0.0_rprec
-allocate ( unsxz(nx,ny) ); unsxz = 0.0_rprec
-allocate ( unsyz(nx,ny) ); unsyz = 0.0_rprec
-allocate ( ur_mag_wpm(nx,ny) ); ur_mag_wpm = 0.0_rprec
-allocate ( H_wpm(nx,ny) ); H_wpm = 0.0_rprec
-allocate ( nx_wpm(nx,ny) ); nx_wpm = 0.0_rprec
-allocate ( ny_wpm(nx,ny) ); ny_wpm = 0.0_rprec
-allocate ( uns_convec_x1(nx,ny) ); uns_convec_x1 = 0.0_rprec
-allocate ( uns_convec_x2(nx,ny) ); uns_convec_x2 = 0.0_rprec
-allocate ( uns_convec_y1(nx,ny) ); uns_convec_y1 = 0.0_rprec
-allocate ( uns_convec_y2(nx,ny) ); uns_convec_y2 = 0.0_rprec
 allocate ( corr_1(nx,ny) ); corr_1 = 0.0_rprec
 allocate ( corr_2(nx,ny) ); corr_2 = 0.0_rprec
 allocate ( corr_3(nx,ny) ); corr_3 = 0.0_rprec
