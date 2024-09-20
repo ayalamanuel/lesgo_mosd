@@ -6,12 +6,12 @@ cmake_minimum_required(VERSION 2.8.9)
 
 # Specify Compiler
 # Options: Intel and GNU
-set(CMAKE_Fortran_COMPILER_ID "Intel")
+set(CMAKE_Fortran_COMPILER_ID "GNU")
 
 # Set the name of the computer you are compiling on.
 # Supported computers: rockfish, panoramix, njord, marcc, darwin-brew, cheyenne, stampede
 # Otherwise, default settings are used
-set(hostname "derecho")
+set(hostname "rockfish")
 
 # Read and write binary files as big_endian or little_endian
 # Options: DEFAULT, LITTLE, or BIG
@@ -23,7 +23,7 @@ option(USE_MPI "Enable parallelization support." ON)
 option(USE_CPS "Enable concurrent precursor simulations." OFF)
 option(USE_HIT "Enable homogeneous isotropic turbulence input." OFF)
 option(USE_LVLSET "Enable level set." OFF)
-option(USE_TURBINES "Enable actuator disk model without rotation." ON)
+option(USE_TURBINES "Enable actuator disk model without rotation." OFF)
 option(USE_ATM "Enable actuator line/section model" OFF)
 option(USE_DYN_TN "Dynamically update T, the timescale for Lagrangian averaging, using Taylor timescale." OFF)
 option(USE_SAFETYMODE "Set extra safety measures." ON)

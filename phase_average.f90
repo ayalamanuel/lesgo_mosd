@@ -102,8 +102,8 @@ allocate( this%dvdz(1:nx,1:ny,1:nz,pavg_nbins) ); this%dvdz(:,:,:,:) = 0._rprec
 allocate( this%dwdx(1:nx,1:ny,1:nz,pavg_nbins) ); this%dwdx(:,:,:,:) = 0._rprec
 allocate( this%dwdy(1:nx,1:ny,1:nz,pavg_nbins) ); this%dwdy(:,:,:,:) = 0._rprec
 allocate( this%dwdz(1:nx,1:ny,1:nz,pavg_nbins) ); this%dwdz(:,:,:,:) = 0._rprec
-allocate( this%dpdz(1:nx,1:ny,1:nz,pavg_nbins) ); this%dpdz(:,:,:,:) = 0._rprec
-allocate( this%dpdz_uv(1:nx,1:ny,1:nz,pavg_nbins) ); this%dpdz_uv(:,:,:,:) = 0._rprec
+!allocate( this%dpdz(1:nx,1:ny,1:nz,pavg_nbins) ); this%dpdz(:,:,:,:) = 0._rprec
+!allocate( this%dpdz_uv(1:nx,1:ny,1:nz,pavg_nbins) ); this%dpdz_uv(:,:,:,:) = 0._rprec
 
 allocate( this%p(1:nx,1:ny,1:nz,pavg_nbins) ); this%p(:,:,:,:) = 0._rprec
 allocate( this%pres_real(1:nx,1:ny,1:nz,pavg_nbins) ); this%pres_real(:,:,:,:) = 0._rprec
@@ -165,8 +165,8 @@ else
     read(fid) this%dwdx
     read(fid) this%dwdy
     read(fid) this%dwdz
-    read(fid) this%dpdz     
-    read(fid) this%dpdz_uv   
+ !   read(fid) this%dpdz     
+ !   read(fid) this%dpdz_uv   
     
     read(fid) this%p
     read(fid) this%pres_real
@@ -213,7 +213,7 @@ integer :: bin
 w_uv(1:nx,1:ny,lbz:nz) = interp_to_uv_grid(w(1:nx,1:ny,lbz:nz), lbz )
 u_w(1:nx,1:ny,lbz:nz) = interp_to_w_grid(u(1:nx,1:ny,lbz:nz), lbz )
 v_w(1:nx,1:ny,lbz:nz) = interp_to_w_grid(v(1:nx,1:ny,lbz:nz), lbz )
-dpdz_uv(1:nx,1:ny,lbz:nz) = interp_to_uv_grid(dpdz(1:nx,1:ny,lbz:nz), lbz )
+!dpdz_uv(1:nx,1:ny,lbz:nz) = interp_to_uv_grid(dpdz(1:nx,1:ny,lbz:nz), lbz )
 
 
 !! note: u_w not necessarily zero on walls, but only mult by w=0 vu u'w', so OK
@@ -268,8 +268,8 @@ call pavg_compute(this%time,dvdz(1:nx,1:ny,1:nz),this%dvdz)
 call pavg_compute(this%time,dwdx(1:nx,1:ny,1:nz),this%dwdx)
 call pavg_compute(this%time,dwdy(1:nx,1:ny,1:nz),this%dwdy)
 call pavg_compute(this%time,dwdz(1:nx,1:ny,1:nz),this%dwdz)
-call pavg_compute(this%time,dpdz(1:nx,1:ny,1:nz),this%dpdz)
-call pavg_compute(this%time,dpdz_uv(1:nx,1:ny,1:nz),this%dpdz_uv)
+!call pavg_compute(this%time,dpdz(1:nx,1:ny,1:nz),this%dpdz)
+!call pavg_compute(this%time,dpdz_uv(1:nx,1:ny,1:nz),this%dpdz_uv)
 
 call pavg_compute(this%time,pres_real(1:nx,1:ny,1:nz),this%pres_real)
 call pavg_compute(this%time,p(1:nx,1:ny,1:nz),this%p)
@@ -458,8 +458,8 @@ do jz = 1,nz
     this%dwdx(jx,jy,jz,:) = this%dwdx(jx,jy,jz,:) / this%np(:)
     this%dwdy(jx,jy,jz,:) = this%dwdy(jx,jy,jz,:) / this%np(:)
     this%dwdz(jx,jy,jz,:) = this%dwdz(jx,jy,jz,:) / this%np(:)
-    this%dpdz(jx,jy,jz,:) = this%dpdz(jx,jy,jz,:) / this%np(:)
-    this%dpdz_uv(jx,jy,jz,:) = this%dpdz_uv(jx,jy,jz,:) / this%np(:)
+ !   this%dpdz(jx,jy,jz,:) = this%dpdz(jx,jy,jz,:) / this%np(:)
+ !   this%dpdz_uv(jx,jy,jz,:) = this%dpdz_uv(jx,jy,jz,:) / this%np(:)
 
     this%p(jx,jy,jz,:) = this%p(jx,jy,jz,:) / this%np(:)
     this%pres_real(jx,jy,jz,:) = this%pres_real(jx,jy,jz,:) / this%np(:)
@@ -484,8 +484,8 @@ write(fid,rec=5) this%v_w(1:nx,1:ny,1:nz,1:pavg_nbins)
 write(fid,rec=6) this%w_uv(1:nx,1:ny,1:nz,1:pavg_nbins)
 write(fid,rec=7) this%p(1:nx,1:ny,1:nz,1:pavg_nbins)
 write(fid,rec=8) this%pres_real(1:nx,1:ny,1:nz,1:pavg_nbins)
-write(fid,rec=9) this%dpdz(1:nx,1:ny,1:nz,1:pavg_nbins)
-write(fid,rec=10) this%dpdz_uv(1:nx,1:ny,1:nz,1:pavg_nbins)
+!write(fid,rec=9) this%dpdz(1:nx,1:ny,1:nz,1:pavg_nbins)
+!write(fid,rec=10) this%dpdz_uv(1:nx,1:ny,1:nz,1:pavg_nbins)
 close(fid)
 
 open(newunit=fid, file=fname_vel2, form='unformatted', convert=write_endian,        &
@@ -647,8 +647,8 @@ write(fid) this%dvdz
 write(fid) this%dwdx
 write(fid) this%dwdy
 write(fid) this%dwdz
-write(fid) this%dpdz
-write(fid) this%dpdz_uv
+!write(fid) this%dpdz
+!write(fid) this%dpdz_uv
 
 write(fid) this%p
 write(fid) this%pres_real

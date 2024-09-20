@@ -111,8 +111,8 @@ Re_fit2 = (0.005_rprec)**(beta_12(:,:)-0.5_rprec)*Re_delta2(:,:)**(beta_12(:,:))
                     ((beta_12(:,:) -0.5_rprec)/beta_22(:,:))
 
 if (smooth_eqm) then
-        eqmxz = -(Re_fit(:,:)/Re_delta(:,:))**2 * u_eqm(:,:)*u_LES(:,:)
-        eqmyz = -(Re_fit(:,:)/Re_delta(:,:))**2 * v_eqm(:,:)*u_LES(:,:)
+        eqmxz = -(Re_fit(:,:)/Re_delta(:,:))**2 * ur_eqm(:,:)*u_LES(:,:)
+        eqmyz = -(Re_fit(:,:)/Re_delta(:,:))**2 * vr_eqm(:,:)*u_LES(:,:)
         dudz(1:nx,1:ny,1) = 1/(0.5_rprec*dz*vonk)*(Re_fit2(:,:)/ &
                             Re_delta2(:,:))*u(1:nx,1:ny,1)
         dvdz(1:nx,1:ny,1) = 1/(0.5_rprec*dz*vonk)*(Re_fit2(:,:)/ &
@@ -120,8 +120,8 @@ if (smooth_eqm) then
 else
         A = ((Re_fit(:,:)/Re_delta(:,:))**(6.0_rprec) + (2.5_rprec* &
             log((dz_match)/zo))**(-6.0_rprec))**(0.33333_rprec)
-        eqmxz = - A(:,:) * u_eqm(:,:)*u_LES(:,:)
-        eqmyz = - A(:,:) * v_eqm(:,:)*u_LES(:,:)
+        eqmxz = - A(:,:) * ur_eqm(:,:)*u_LES(:,:)
+        eqmyz = - A(:,:) * vr_eqm(:,:)*u_LES(:,:)
 
         A2 = ((Re_fit2(:,:)/Re_delta2(:,:))**(6.0_rprec) + (2.5_rprec* &
              log((0.5_rprec*dz)/zo))**(-6.0_rprec))**(0.16666_rprec)

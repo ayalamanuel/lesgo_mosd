@@ -119,8 +119,8 @@ allocate( this%wpmyz(nx,ny) ); this%wpmyz(:,:) = 0._rprec
 
 allocate( this%p(nx,ny,lbz:nz) ); this%p(:,:,:) = 0._rprec
 allocate( this%pres_real(nx,ny,lbz:nz) ); this%pres_real(:,:,:) = 0._rprec
-allocate( this%dpdz(nx,ny,lbz:nz) ); this%dpdz(:,:,:) = 0._rprec
-allocate( this%dpdz_uv(nx,ny,lbz:nz) ); this%dpdz_uv(:,:,:) = 0._rprec
+!allocate( this%dpdz(nx,ny,lbz:nz) ); this%dpdz(:,:,:) = 0._rprec
+!allocate( this%dpdz_uv(nx,ny,lbz:nz) ); this%dpdz_uv(:,:,:) = 0._rprec
 allocate( this%fx(nx,ny,lbz:nz) ); this%fx(:,:,:) = 0._rprec
 allocate( this%fy(nx,ny,lbz:nz) ); this%fy(:,:,:) = 0._rprec
 allocate( this%fz(nx,ny,lbz:nz) ); this%fz(:,:,:) = 0._rprec
@@ -131,7 +131,7 @@ allocate( this%vortz(nx,ny,lbz:nz) ); this%vortz(:,:,:) = 0._rprec
 
 
 allocate( this%cc_z(nx,ny,lbz:nz) ); this%cc_z(:,:,:) = 0._rprec
-allocate( this%dpdx(nx,ny,lbz:nz) ); this%dpdx(:,:,:) = 0._rprec
+!allocate( this%dpdx(nx,ny,lbz:nz) ); this%dpdx(:,:,:) = 0._rprec
 allocate( this%divtx(nx,ny,lbz:nz) ); this%divtx(:,:,:) = 0._rprec
 allocate( this%RHSx(nx,ny,lbz:nz) ); this%RHSx(:,:,:) = 0._rprec
 allocate( this%RHSx_f(nx,ny,lbz:nz) ); this%RHSx_f(:,:,:) = 0._rprec
@@ -202,8 +202,8 @@ else
     read(1) this%txy
     read(1) this%txz
     read(1) this%tyz
-    read(1) this%dpdz
-    read(1) this%dpdz_uv
+!    read(1) this%dpdz
+!    read(1) this%dpdz_uv
     read(1) this%p
     read(1) this%pres_real
 
@@ -221,7 +221,7 @@ else
     read(1) this%vortz
 
     read(1) this%cc_z
-    read(1) this%dpdx
+!    read(1) this%dpdx
     read(1) this%divtx
     read(1) this%RHSx
     read(1) this%RHSx_f
@@ -324,7 +324,7 @@ w_uv(1:nx,1:ny,lbz:nz) = interp_to_uv_grid(w(1:nx,1:ny,lbz:nz), lbz )
 u_w(1:nx,1:ny,lbz:nz) = interp_to_w_grid(u(1:nx,1:ny,lbz:nz), lbz )
 v_w(1:nx,1:ny,lbz:nz) = interp_to_w_grid(v(1:nx,1:ny,lbz:nz), lbz )
 
-dpdz_uv(1:nx,1:ny,lbz:nz) = interp_to_uv_grid(dpdz(1:nx,1:ny,lbz:nz), lbz )
+!dpdz_uv(1:nx,1:ny,lbz:nz) = interp_to_uv_grid(dpdz(1:nx,1:ny,lbz:nz), lbz )
 
 #if defined(PPTURBINES) || defined(PPATM) || defined(PPLVLSET)
 fza_uv(1:nx,1:ny,lbz:nz) = interp_to_uv_grid(fza(1:nx,1:ny,lbz:nz), lbz )
@@ -510,11 +510,11 @@ this%wpmyz(:,:) = this%wpmyz(:,:) + s_wpmyz(1:nx,1:ny)*this%dt
 
 this%pres_real(:,:,:) = this%pres_real(:,:,:) + pres_real(1:nx,1:ny,:)*this%dt
 this%p(:,:,:) = this%p(:,:,:) + p(1:nx,1:ny,:)*this%dt
-this%dpdz(:,:,:) = this%dpdz(:,:,:) + dpdz(1:nx,1:ny,:)*this%dt
-this%dpdz_uv(:,:,:) = this%dpdz_uv(:,:,:) + dpdz_uv(1:nx,1:ny,:)*this%dt
+!this%dpdz(:,:,:) = this%dpdz(:,:,:) + dpdz(1:nx,1:ny,:)*this%dt
+!this%dpdz_uv(:,:,:) = this%dpdz_uv(:,:,:) + dpdz_uv(1:nx,1:ny,:)*this%dt
 
 this%cc_z(:,:,:) = this%cc_z(:,:,:) + cc_z(1:nx,1:ny,:)*this%dt
-this%dpdx(:,:,:) = this%dpdx(:,:,:) + dpdx(1:nx,1:ny,:)*this%dt
+!this%dpdx(:,:,:) = this%dpdx(:,:,:) + dpdx(1:nx,1:ny,:)*this%dt
 this%divtx(:,:,:) = this%divtx(:,:,:) + divtx(1:nx,1:ny,:)*this%dt
 this%RHSx(:,:,:) = this%RHSx(:,:,:) + RHSx(1:nx,1:ny,:)*this%dt
 this%RHSx_f(:,:,:) = this%RHSx_f(:,:,:) + RHSx_f(1:nx,1:ny,:)*this%dt
@@ -709,8 +709,8 @@ this%wpmyz(:,:) = this%wpmyz(:,:) /  this%total_time
 
 this%p(:,:,:) = this%p(:,:,:) /  this%total_time
 this%pres_real(:,:,:) = this%pres_real(:,:,:) /  this%total_time
-this%dpdz(:,:,:) = this%dpdz(:,:,:) / this%total_time
-this%dpdz_uv(:,:,:) = this%dpdz_uv(:,:,:) / this%total_time
+!this%dpdz(:,:,:) = this%dpdz(:,:,:) / this%total_time
+!this%dpdz_uv(:,:,:) = this%dpdz_uv(:,:,:) / this%total_time
 this%fx(:,:,:) = this%fx(:,:,:) /  this%total_time
 this%fy(:,:,:) = this%fy(:,:,:) /  this%total_time
 this%fz(:,:,:) = this%fz(:,:,:) /  this%total_time
@@ -720,7 +720,7 @@ this%vorty(:,:,:) = this%vorty(:,:,:) /  this%total_time
 this%vortz(:,:,:) = this%vortz(:,:,:) /  this%total_time
 
 this%cc_z(:,:,:) = this%cc_z(:,:,:) /  this%total_time
-this%dpdx(:,:,:) = this%dpdx(:,:,:) /  this%total_time
+!this%dpdx(:,:,:) = this%dpdx(:,:,:) /  this%total_time
 this%divtx(:,:,:) = this%divtx(:,:,:) / this%total_time
 this%RHSx(:,:,:) = this%RHSx(:,:,:) / this%total_time
 this%RHSx_f(:,:,:) = this%RHSx_f(:,:,:) /  this%total_time
@@ -938,7 +938,7 @@ close(13)
 open(unit=13, file=fname_mombal, form='unformatted', convert=write_endian,       &
     access='direct', recl=nx*ny*nz*rprec)
 write(13,rec=1) this%cc_z(:nx,:ny,1:nz)
-write(13,rec=2) this%dpdx(:nx,:ny,1:nz)
+!write(13,rec=2) this%dpdx(:nx,:ny,1:nz)
 write(13,rec=3) this%divtx(:nx,:ny,1:nz)
 write(13,rec=4) this%RHSx(:nx,:ny,1:nz)
 write(13,rec=5) this%RHSx_f(:nx,:ny,1:nz)
@@ -1074,8 +1074,8 @@ write(1) this%tzz
 write(1) this%txy
 write(1) this%txz
 write(1) this%tyz
-write(1) this%dpdz
-write(1) this%dpdz_uv
+!write(1) this%dpdz
+!write(1) this%dpdz_uv
 write(1) this%p
 write(1) this%pres_real
 
@@ -1093,7 +1093,7 @@ write(1) this%vorty
 write(1) this%vortz
 
     write(1) this%cc_z
-    write(1) this%dpdx
+!    write(1) this%dpdx
     write(1) this%divtx
     write(1) this%RHSx
     write(1) this%RHSx_f
