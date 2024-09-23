@@ -88,6 +88,15 @@ logical, public :: adm_correction
 ! Number of timesteps between the output
 integer, public :: tbase
 
+! frequency of forced tilting
+real(rprec), public :: theta2_freq
+! amplitude of forced tilting
+real(rprec), public :: theta2_amp
+! second amplitude of forced tilting 
+real(rprec), public :: phi2
+! selection of type of dynamic angles
+integer, public :: angle_type
+
 ! The following are derived from the values above
 integer :: nloc             ! total number of turbines
 real(rprec) :: sx           ! spacing in the x-direction, multiple of diameter
@@ -486,7 +495,7 @@ subroutine turbines_forcing()
 !
 ! This subroutine applies the drag-disk forcing
 !
-use param, only : pi, lbz, total_time, theta2_freq, theta2_amp, phi2, angle_type
+use param, only : pi, lbz, total_time
 use sim_param, only : u, v, w, fxa, fya, fza, detadx, detadx_dt, eta
 use functions, only : linear_interp, interp_to_uv_grid, interp_to_w_grid
 use mpi
@@ -530,7 +539,6 @@ w_uv = interp_to_uv_grid(w, lbz)
 ! Here we select which type of angle we want for the turbines. Make sure
 ! theta2 is in degrees and the omega's are in radians 
 select case(angle_type)
-
         ! Offshore angles. Angles coming from the wave
         case (0)
         do s = 1,nloc
@@ -591,7 +599,6 @@ select case(angle_type)
         
         case default
         call error (sub_name2, 'invalid')
-
 end select
 
 
@@ -876,16 +883,6 @@ else
     wind_farm%turbine(:)%theta2 = theta2_all
     wind_farm%turbine(:)%Ct_prime = Ct_prime
 
-    ! flag for setting the prescribed turbine location as the orginal (OG)
-    ! location. this is for turbines dynamically tilting, yawing, etc
-    if (angle_type < 3) then
-    
-    wind_farm%turbine(:)%xloc_og = wind_farm%turbine(:)%xloc
-    wind_farm%turbine(:)%yloc_og = wind_farm%turbine(:)%yloc
-    wind_farm%turbine(:)%height_og = wind_farm%turbine(:)%height 
-
-    end if
-
     ! Set baseline locations (evenly spaced, not staggered aka aligned)
     k = 1
     sxx = sx * dia_all  ! x-spacing with units to match those of L_x
@@ -964,6 +961,16 @@ else
 
     end select
 end if
+
+    ! flag for setting the prescribed turbine location as the orginal (OG)
+    ! location. this is for turbines dynamically tilting, yawing, etc
+    if (angle_type < 3) then
+
+    wind_farm%turbine(:)%xloc_og = wind_farm%turbine(:)%xloc
+    wind_farm%turbine(:)%yloc_og = wind_farm%turbine(:)%yloc
+    wind_farm%turbine(:)%height_og = wind_farm%turbine(:)%height
+
+    end if
 
 end subroutine place_turbines
 

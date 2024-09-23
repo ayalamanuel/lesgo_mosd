@@ -50,7 +50,6 @@ character(*), parameter :: if_fmt='(a,i7,e15.7)'
 character(*), parameter :: ix3f_fmt='(a,i7,3e15.7)'
 character(13) :: ch
 
-
 allocate(fname, source=path // 'output/lesgo_param.out')
 open (unit = 2,file = fname, status='unknown',form='formatted',                &
   action='write',position='rewind')
@@ -228,15 +227,6 @@ write(2,c_fmt) '---------------------------------------------------'
 write(2,c_fmt) 'SGS PARAMETERS'
 write(2,c_fmt) '---------------------------------------------------'
 write(2,l_fmt) 'lag_dyn_modify_beta : ', lag_dyn_modify_beta
-#endif
-
-#ifdef PPTURBINES
-write(2,f_fmt) 'theta2_freq : ',theta2_freq
-write(2,f_fmt) 'theta2_amp : ',theta2_amp
-write(2,f_fmt) 'phi2 : ', phi2
-write(2,i_fmt) 'angle_type : ', angle_type
-
-
 #endif
 
 close(2)

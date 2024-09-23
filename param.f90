@@ -297,12 +297,4 @@ integer :: waveplane_nstart=10000, waveplane_nend=50000, waveplane_nskip=10000
 logical :: mosdplane_calc=.false.
 integer :: mosdplane_nstart=10000, mosdplane_nend=50000, mosdplane_nskip=10000
 
-!---------------------------------------------------
-! TURBINE PARAMETERS
-!---------------------------------------------------
-real(rprec) :: theta2_freq= 1_rprec
-real(rprec) :: theta2_amp= 1_rprec
-real(rprec) :: phi2 = 1_rprec
-integer :: angle_type = 3
-
 end module param

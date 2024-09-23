@@ -467,6 +467,8 @@ do
                 Read (buff(equal_pos+1:), *) kp_spec            
             case ('THETA_MAIN')
                 Read (buff(equal_pos+1:), *) theta_main
+            case ('L_PLATFORM')
+                Read (buff(equal_pos+1:), *) L_platform
             case ('AMP')
                 Read (buff(equal_pos+1:), *) amp
             case ('WAVE_N')
@@ -833,8 +835,6 @@ do
                 read (buff(equal_pos+1:), *) theta2_all
             case ('ANGLE_TYPE')
                 Read (buff(equal_pos+1:), *) angle_type
-            case ('L_PLATFORM')
-                Read (buff(equal_pos+1:), *) L_platform
             case ('THETA2_FREQ')
                 Read (buff(equal_pos+1:), *) theta2_freq
             case ('THETA2_amp')
