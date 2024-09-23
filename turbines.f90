@@ -88,9 +88,6 @@ logical, public :: adm_correction
 ! Number of timesteps between the output
 integer, public :: tbase
 
-! Flag for offshore wind turbine angles
-logical, public :: offshore_angles
-
 ! The following are derived from the values above
 integer :: nloc             ! total number of turbines
 real(rprec) :: sx           ! spacing in the x-direction, multiple of diameter
@@ -117,12 +114,8 @@ integer, dimension(:), allocatable :: forcing_fid
 real(rprec) :: eps
 
 ! Commonly used indices
-integer :: i, j, k, i2, j2, k2, l, s
+integer :: i, j, k, i2, j2, k2, l, s, n, m
 integer :: k_start, k_end
-
-! rx ry rz
-!Store global rx, ry, rz values to an array
-real(rprec), allocatable, dimension(:,:,:) ::  rx_a, ry_a, rz_a
 
 !Store local rx, ry, rz values to an array
 real(rprec), allocatable, dimension(:,:,:) ::  rx_l, ry_l, rz_l
@@ -172,9 +165,6 @@ allocate(forcing_fid(nloc))
 ! allocate local rx ry rz
  allocate(rx_l(ld,ny,lbz:nz), ry_l(ld,ny,lbz:nz), rz_l(ld,ny,lbz:nz))
 
-! allocate global rx ry rz
- allocate(rx_a(ld,ny,nz_tot), ry_a(ld,ny,nz_tot), rz_a(ld,ny,nz_tot))
-
 ! Create turbine directory
 call system('mkdir -vp ' // path // output_folder)
 
@@ -194,8 +184,6 @@ call place_turbines
 ! and set baseline values for size
 do k = 1, nloc
     wind_farm%turbine(k)%thk = max(wind_farm%turbine(k)%thk, dx * 1.01)
-    ! wind_farm%turbine(k)%vol_c = dx*dy*dz/(pi/4.*(wind_farm%turbine(k)%dia)**2 &
-    !     * wind_farm%turbine(k)%thk)
 end do
 
 ! Specify starting and ending indices for the processor
@@ -206,26 +194,6 @@ k_end = nz-1+coord*(nz-1)
 k_start = 1
 k_end = nz
 #endif
-
-! Find the center of each turbine
-do k = 1,nloc
-    wind_farm%turbine(k)%icp = nint(wind_farm%turbine(k)%xloc/dx)
-    wind_farm%turbine(k)%jcp = nint(wind_farm%turbine(k)%yloc/dy)
-    wind_farm%turbine(k)%kcp = nint(wind_farm%turbine(k)%height/dz + 0.5)
-
-    ! Check if turbine is the current processor
-    test_logical = wind_farm%turbine(k)%kcp >= k_start .and.                   &
-           wind_farm%turbine(k)%kcp<=k_end
-    if (test_logical) then
-        wind_farm%turbine(k)%center_in_proc = .true.
-    else
-        wind_farm%turbine(k)%center_in_proc = .false.
-    end if
-
-    ! Make kcp the local index
-    wind_farm%turbine(k)%kcp = wind_farm%turbine(k)%kcp - k_start + 1
-
-end do
 
 ! Read dynamic control input files
 call read_control_files
@@ -292,7 +260,7 @@ subroutine turbines_nodes
 !*******************************************************************************
 !
 ! This subroutine locates nodes for each turbine and builds the arrays: ind,
-! n_hat, num_nodes, and nodes
+! n_hat, num_nodes, and nodes.
 !
 use functions, only : cross_product
 use param, only : dx, dy
@@ -300,8 +268,7 @@ implicit none
 
 character (*), parameter :: sub_name = mod_name // '.turbines_nodes'
 
-real(rprec) :: rx,ry,rz,r,r_norm,r_disk
-
+real(rprec) :: rx,ry,rz,rzz,r,r_norm,r_disk
 real(rprec), pointer :: p_xloc => null(), p_yloc => null(), p_height => null()
 real(rprec), pointer :: p_dia => null(), p_thk => null()
 real(rprec), pointer :: p_theta1 => null(), p_theta2 => null()
@@ -320,6 +287,7 @@ real(rprec), pointer, dimension(:) :: x, y, z
 
 real(rprec) :: filt, filt_t, search_rad, filt_max
 real(rprec), dimension(nloc) :: sumA, turbine_vol
+logical :: test_logical
 
 nullify(x,y,z)
 
@@ -328,14 +296,6 @@ y => grid % y
 z => grid % z
 
 sumA = 0._rprec
-
-rx_a = 0._rprec
-ry_a = 0._rprec
-rz_a = 0._rprec
-
-rx_l = 0._rprec
-ry_l = 0._rprec
-rz_l = 0._rprec
 
 ! z_tot for total domain (since z is local to the processor)
 do k = 1,nz_tot
@@ -359,6 +319,26 @@ do s=1,nloc
     p_nhat1 => wind_farm%turbine(s)%nhat(1)
     p_nhat2 => wind_farm%turbine(s)%nhat(2)
     p_nhat3 => wind_farm%turbine(s)%nhat(3)
+
+    ! Find the center of each turbine
+    do k = 1,nloc
+    wind_farm%turbine(k)%icp = nint(wind_farm%turbine(k)%xloc/dx)
+    wind_farm%turbine(k)%jcp = nint(wind_farm%turbine(k)%yloc/dy)
+    wind_farm%turbine(k)%kcp = nint(wind_farm%turbine(k)%height/dz + 0.5)
+
+    ! Check if turbine is the current processor. MA: this part was in 
+    ! turbines_init before, but was moved since kcp can be moving
+    test_logical = wind_farm%turbine(k)%kcp >= k_start .and.                   &
+           wind_farm%turbine(k)%kcp<=k_end
+    if (test_logical) then
+        wind_farm%turbine(k)%center_in_proc = .true.
+    else
+        wind_farm%turbine(k)%center_in_proc = .false.
+    end if
+
+    ! Make kcp the local index
+    wind_farm%turbine(k)%kcp = wind_farm%turbine(k)%kcp - k_start + 1
+    end do
 
     
     !identify "search area"
@@ -407,11 +387,16 @@ do s=1,nloc
     ! Maximum value the filter takes (should be 1/volume)
     call wind_farm%turbine(s)%turb_ind_func%val(0._rprec, 0._rprec, filt_max, r_disk)
 
-    do k=k_start,k_end  !global k
+    ! Here the r vector is calculated for the indicator function and also the "arm"
+    ! for the disk velocity calculation for dyanmic tilting and yawing. Note that
+    ! the r vector for the ind is from the center and the "arm" is from the 
+    ! platform base. (rx,ry,rz) are the components for r in ind. For both ind and "arm",
+    ! rx and ry will be same but rz is different. (rzz) is for the "arm". rzz > rz
+
+    do k=k_start,k_end  !global k ----> MA: this is not global k, this is the local 
+                        ! for each processor
         do j=min_j,max_j
             do i=min_i,max_i
-                ! vector from center point to this node is (rx,ry,rz)
-                ! with length r
                 if (i<1) then
                     i2 = mod(i+nx-1,nx)+1
                     rx = (x(i2)-L_x) - p_xloc
@@ -433,17 +418,13 @@ do s=1,nloc
                     ry = y(j) - p_yloc
                 end if
                     rz = z_tot(k) - p_height
-! Global rx_a
-                 rx_a(i,j,k-coord*(nz-1)) = rx
-                 ry_a(i,j,k-coord*(nz-1)) = ry
-                 rz_a(i,j,k-coord*(nz-1)) = rz
+                    rzz = z_tot(k) 
 
-! Local rx_a
-    do l = 0,nz  !global k
-                 rx_l(:,:,l) = rx_a(:,:,k-coord*(nz-1))
-                 ry_l(:,:,l) = ry_a(:,:,k-coord*(nz-1))
-                 rz_l(:,:,l) = rz_a(:,:,k-coord*(nz-1))
-    end do
+                ! Local rx_l
+                    rx_l(i2,j2,k-coord*(nz-1)) = rx
+                    ry_l(i2,j2,k-coord*(nz-1)) = ry
+                    rz_l(i2,j2,k-coord*(nz-1)) = rzz
+
                 r = sqrt(rx*rx + ry*ry + rz*rz)
                 !length projected onto unit normal for this turbine
                 r_norm = abs(rx*p_nhat1 + ry*p_nhat2 + rz*p_nhat3)
@@ -505,13 +486,14 @@ subroutine turbines_forcing()
 !
 ! This subroutine applies the drag-disk forcing
 !
-use param, only : pi, lbz
+use param, only : pi, lbz, total_time, theta2_freq, theta2_amp, phi2, angle_type
 use sim_param, only : u, v, w, fxa, fya, fza, detadx, detadx_dt, eta
 use functions, only : linear_interp, interp_to_uv_grid, interp_to_w_grid
 use mpi
 implicit none
 
 character(*), parameter :: sub_name = mod_name // '.turbines_forcing'
+character(*), parameter :: sub_name2 = 'angle type'
 
 real(rprec), pointer :: p_u_d => null(), p_u_d_T => null(), p_f_n => null()
 real(rprec), pointer :: p_Ct_prime => null()
@@ -544,39 +526,73 @@ call mpi_sync_real_array(w, 0, MPI_SYNC_DOWNUP)
 
 w_uv = interp_to_uv_grid(w, lbz)
 
-! Do interpolation for dynamically changing parameters
-do s = 1, nloc
-    if (dyn_theta1) wind_farm%turbine(s)%theta1 =                              &
-        linear_interp(theta1_time, theta1_arr(s,:), total_time_dim)
-    if (dyn_theta2) wind_farm%turbine(s)%theta2 =                              &
-        linear_interp(theta2_time, theta2_arr(s,:), total_time_dim)
-    if (dyn_Ct_prime) wind_farm%turbine(s)%Ct_prime =                          &
-        linear_interp(Ct_prime_time, Ct_prime_arr(s,:), total_time_dim)
-end do
 
-! Recompute the turbine position if theta1 or theta2 can change
-if (dyn_theta1 .or. dyn_theta2) call turbines_nodes
+! Here we select which type of angle we want for the turbines. Make sure
+! theta2 is in degrees and the omega's are in radians 
+select case(angle_type)
 
-if (offshore_angles) then
+        ! Offshore angles. Angles coming from the wave
+        case (0)
         do s = 1,nloc
-             wind_farm%turbine(s)%theta2 = detadx(wind_farm%turbine(s)%xloc,     &
-                                  wind_farm%turbine(s)%yloc)*180/pi
-
+             wind_farm%turbine(s)%theta1 = 0.0_rprec
+             wind_farm%turbine(s)%theta2 = detadx(wind_farm%turbine(s)%xloc_og,   &
+                                           wind_farm%turbine(s)%yloc_og)*180/pi
              wind_farm%turbine(s)%omegax = 0.0_rprec
-             wind_farm%turbine(s)%omegay = detadx_dt(wind_farm%turbine(s)%xloc,   &
-                                  wind_farm%turbine(s)%yloc)
+             wind_farm%turbine(s)%omegay = detadx_dt(wind_farm%turbine(s)%xloc_og,&
+                                           wind_farm%turbine(s)%yloc_og)
              wind_farm%turbine(s)%omegaz = 0.0_rprec
+             wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +           & 
+                                        wind_farm%turbine(s)%height_og*           &
+                                        sin(wind_farm%turbine(s)%theta2*pi/180)
+             wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
+             wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
+                                          cos(wind_farm%turbine(s)%theta2*pi/180)
         end do
-        
         call turbines_nodes
-else
+
+        ! Forced angle. Angle coming from equation
+        case (1)
+        do s = 1,nloc
+             wind_farm%turbine(s)%theta1 = 0.0_rprec
+             wind_farm%turbine(s)%theta2 = (theta2_amp*sin(theta2_freq*2*pi*      & 
+                                           total_time) + phi2)
+             wind_farm%turbine(s)%omegax = 0.0_rprec
+             wind_farm%turbine(s)%omegay = (theta2_freq*2*pi*theta2_amp*          &
+                                           cos(theta2_freq*2*pi*total_time))*pi/180
+             wind_farm%turbine(s)%omegaz = 0.0_rprec
+             wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +           &  
+                                        wind_farm%turbine(s)%height_og*           &
+                                        sin(wind_farm%turbine(s)%theta2*pi/180)
+             wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
+             wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
+                                          cos(wind_farm%turbine(s)%theta2*pi/180)
+        end do
+        call turbines_nodes
+
+        ! Dyanmic angles. Angles coming from table
+        case (2)
+        do s = 1, nloc
+             if (dyn_theta1) wind_farm%turbine(s)%theta1 =                              &
+                linear_interp(theta1_time, theta1_arr(s,:), total_time_dim)
+             if (dyn_theta2) wind_farm%turbine(s)%theta2 =                              &
+                linear_interp(theta2_time, theta2_arr(s,:), total_time_dim)
+             if (dyn_Ct_prime) wind_farm%turbine(s)%Ct_prime =                          &
+                linear_interp(Ct_prime_time, Ct_prime_arr(s,:), total_time_dim)
+        end do
+        call turbines_nodes
+                
+        ! No angles
+        case (3)
         do s = 1,nloc
              wind_farm%turbine(s)%omegax = 0.0_rprec
              wind_farm%turbine(s)%omegay = 0.0_rprec
              wind_farm%turbine(s)%omegaz = 0.0_rprec
         end do
+        
+        case default
+        call error (sub_name2, 'invalid')
 
-end if
+end select
 
 
 !Each processor calculates the weighted disk-averaged velocity
@@ -859,6 +875,16 @@ else
     wind_farm%turbine(:)%theta1 = theta1_all
     wind_farm%turbine(:)%theta2 = theta2_all
     wind_farm%turbine(:)%Ct_prime = Ct_prime
+
+    ! flag for setting the prescribed turbine location as the orginal (OG)
+    ! location. this is for turbines dynamically tilting, yawing, etc
+    if (angle_type < 3) then
+    
+    wind_farm%turbine(:)%xloc_og = wind_farm%turbine(:)%xloc
+    wind_farm%turbine(:)%yloc_og = wind_farm%turbine(:)%yloc
+    wind_farm%turbine(:)%height_og = wind_farm%turbine(:)%height 
+
+    end if
 
     ! Set baseline locations (evenly spaced, not staggered aka aligned)
     k = 1

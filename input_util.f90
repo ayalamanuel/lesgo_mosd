@@ -831,10 +831,16 @@ do
                 read (buff(equal_pos+1:), *) theta1_all
             case ('THETA2_ALL')
                 read (buff(equal_pos+1:), *) theta2_all
-            case ('OFFSHORE_ANGLES')
-                Read (buff(equal_pos+1:), *) offshore_angles
+            case ('ANGLE_TYPE')
+                Read (buff(equal_pos+1:), *) angle_type
             case ('L_PLATFORM')
                 Read (buff(equal_pos+1:), *) L_platform
+            case ('THETA2_FREQ')
+                Read (buff(equal_pos+1:), *) theta2_freq
+            case ('THETA2_amp')
+                Read (buff(equal_pos+1:), *) theta2_amp
+            case ('PHI2')
+                Read (buff(equal_pos+1:), *) phi2
             case ('CT_PRIME')
                 read (buff(equal_pos+1:), *) Ct_prime
             case ('READ_PARAM')

@@ -101,12 +101,21 @@ write(2,l_fmt) 'initu : ', initu
 write(2,l_fmt) 'inilag : ', inilag
 write(2,i_fmt) 'lbc_mom : ', lbc_mom
 write(2,i_fmt) 'ubc_mom : ', ubc_mom
+write(2,i_fmt) 'wave_type : ', wave_type
 write(2,l_fmt) 'worb : ', worb
+write(2,l_fmt) 'uns_mosd : ', uns_mosd
+write(2,f_fmt) 'alpha_spec : ', alpha_spec
+write(2,f_fmt) 'wp_spec : ', wp_spec
+write(2,f_fmt) 'kp_spec : ', kp_spec
+write(2,f_fmt) 'theta_main : ', theta_main
+write(2,f_fmt) 'L_platform : ', L_platform
 write(2,f_fmt) 'amp : ', amp
 write(2,f_fmt) 'wave_n : ', wave_n
 write(2,f_fmt) 'wave_freq : ', wave_freq
 write(2,f_fmt) 'ubot : ', ubot
 write(2,f_fmt) 'utop : ', utop
+write(2,l_fmt) 'smooth_eqm : ', smooth_eqm
+write(2,f_fmt) 'zgrid_match : ', zgrid_match
 write(2,f_fmt) 'zo : ', zo
 write(2,l_fmt) 'inflow_type : ', inflow_type
 write(2,f_fmt) 'fringe_region_end : ', fringe_region_end
@@ -179,6 +188,12 @@ do n=1,zplane_nloc
   write(2,if_fmt) 'n, zplane_loc(n) : ', n, zplane_loc(n)
 enddo
 
+write(2,l_fmt) 'pavg_calc : ', pavg_calc
+write(2,x3i_fmt) 'pavg_tstart, pavg_tend, pavg_nbins : ', pavg_tstart, pavg_tend, pavg_nbins
+
+
+
+
 #ifdef PPLVLSET
 write(2,c_fmt) ''
 write(2,c_fmt) '**********************************************************************'
@@ -213,6 +228,15 @@ write(2,c_fmt) '---------------------------------------------------'
 write(2,c_fmt) 'SGS PARAMETERS'
 write(2,c_fmt) '---------------------------------------------------'
 write(2,l_fmt) 'lag_dyn_modify_beta : ', lag_dyn_modify_beta
+#endif
+
+#ifdef PPTURBINES
+write(2,f_fmt) 'theta2_freq : ',theta2_freq
+write(2,f_fmt) 'theta2_amp : ',theta2_amp
+write(2,f_fmt) 'phi2 : ', phi2
+write(2,i_fmt) 'angle_type : ', angle_type
+
+
 #endif
 
 close(2)

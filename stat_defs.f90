@@ -84,6 +84,8 @@ type turbine_t
     integer, dimension(6) :: nodes_max
     ! angular velocity of the turbine due to angle
     real(rprec) :: omegax, omegay, omegaz
+    ! original location of the turbine 
+    real(rprec) :: xloc_og, yloc_og, height_og
 end type turbine_t
 
 ! A collection of wind turbines
