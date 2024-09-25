@@ -557,7 +557,7 @@ select case(angle_type)
                                           cos(wind_farm%turbine(s)%theta2*pi/180)
         end do
         call turbines_nodes
-
+        
         ! Forced angle. Angle coming from equation
         case (1)
         do s = 1,nloc
@@ -684,11 +684,15 @@ do s=1,nloc
 
     !write values to file
     if (modulo (jt_total, tbase) == 0 .and. coord == 0) then
+        if (angle_type==0) then
+                eta_val = eta(wind_farm%turbine(s)%xloc_og, wind_farm%turbine(s)%yloc_og)
+        else
+                eta_val = 0.0 
+        end if
         write( forcing_fid(s), *) total_time_dim, u_vel_center(s),         &
             v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,            &
             wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,      &
-            p_Ct_prime, jt_total, eta(wind_farm%turbine(s)%xloc,           &
-            wind_farm%turbine(s)%yloc)
+            p_Ct_prime, jt_total, eta_val
     end if
 
 
@@ -717,6 +721,7 @@ call mpi_sync_real_array( fxa(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
 call mpi_sync_real_array( fya(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
 call mpi_sync_real_array( fza(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
 fza = interp_to_w_grid(fza,lbz)
+
 
 !spatially average velocity at the top of the domain and write to file
 if (coord .eq. nproc-1) then
@@ -874,6 +879,17 @@ if (read_param) then
         wind_farm%turbine(k)%dia = wind_farm%turbine(k)%dia / z_i
         wind_farm%turbine(k)%thk = wind_farm%turbine(k)%thk / z_i
     end do
+
+    ! flag for setting the prescribed turbine location as the orginal (OG)
+    ! location. this is for turbines dynamically tilting, yawing, etc
+    if (angle_type < 3) then
+
+    wind_farm%turbine(:)%xloc_og = wind_farm%turbine(:)%xloc
+    wind_farm%turbine(:)%yloc_og = wind_farm%turbine(:)%yloc
+    wind_farm%turbine(:)%height_og = wind_farm%turbine(:)%height
+
+    end if
+
 else
     ! Set values for each turbine based on values in input file
     wind_farm%turbine(:)%height = height_all
@@ -961,16 +977,6 @@ else
 
     end select
 end if
-
-    ! flag for setting the prescribed turbine location as the orginal (OG)
-    ! location. this is for turbines dynamically tilting, yawing, etc
-    if (angle_type < 3) then
-
-    wind_farm%turbine(:)%xloc_og = wind_farm%turbine(:)%xloc
-    wind_farm%turbine(:)%yloc_og = wind_farm%turbine(:)%yloc
-    wind_farm%turbine(:)%height_og = wind_farm%turbine(:)%height
-
-    end if
 
 end subroutine place_turbines
 

@@ -102,7 +102,8 @@ subroutine mono_wave()
 !*******************************************************************************
 implicit none
 integer :: jx, jy
-real(rprec), dimension(nx, ny) :: x_grid, detadx_new
+real(rprec), dimension(ld, ny) :: x_grid
+real(rprec), dimension(nx, ny) :: detadx_new
 
 do jy = 1,ny
    do jx= 1,ld
@@ -245,8 +246,8 @@ Cy_wave = min(max(Cy_wave(:,:),-threshold_wave_speed),threshold_wave_speed)
 ! Calcualting the realtive velocities. u_dx and v_dx are already filtered 
 ! and we CANNOT filter Cx_wave, Cy_wave because they won't cancel out with 
 ! the surface gradients specially for spectrum wave
-ur_wpm = u_dx(:,:) - Cx_wave(:,:)
-vr_wpm = v_dx(:,:) - Cy_wave(:,:)
+ur_wpm = u_dx(1:nx,1:ny) - Cx_wave(:,:)
+vr_wpm = v_dx(1:nx,1:ny) - Cy_wave(:,:)
 
 ! Calculating the remainder of the steady WPM component
 nx_wpm = detadx(:,:)/grad_eta_mag(:,:)
