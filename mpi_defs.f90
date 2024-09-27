@@ -26,7 +26,7 @@ implicit none
 save
 private
 
-public :: initialize_mpi, mpi_sync_real_array
+public :: initialize_mpi, mpi_sync_real_array, mpi_write_read_2d_array
 public :: MPI_SYNC_DOWN, MPI_SYNC_UP, MPI_SYNC_DOWNUP
 #ifdef PPCPS
 public :: interComm, color, RED, BLUE
@@ -263,4 +263,50 @@ end subroutine sync_up
 
 end subroutine mpi_sync_real_array
 
+!*******************************************************************************
+subroutine mpi_write_read_2d_array(var, nx, ny, coord, is_write)
+!*******************************************************************************
+
+! This subroutine broadcasts a specific variable to the other processors above.
+! This is specifically used to "send" the variables eta, detadx, detady 
+! which are calculated at coord=0 to the others to be used in turbines
+
+    use mpi
+    use types, only : rprec
+    use param, only : MPI_RPREC, comm, ierr
+    implicit none
+
+    real(rprec), dimension(nx,ny), intent(inout) :: var
+    integer, intent(in) :: nx, ny, coord
+    logical, intent(in) :: is_write
+
+    integer :: fh
+    integer(kind=MPI_OFFSET_KIND) :: disp
+    integer :: status(MPI_STATUS_SIZE)
+
+    ! Open the file
+    call MPI_File_open(comm, "temp_data.bin", &
+                       ior(MPI_MODE_RDWR, MPI_MODE_CREATE), &
+                       MPI_INFO_NULL, fh, ierr)
+    if (ierr /= 0) stop "Error opening file"
+
+    if (is_write) then
+        ! Write operation (only coord 0 writes)
+        if (coord == 0) then
+            call MPI_File_write(fh, var, nx*ny, MPI_RPREC, status, ierr)
+            if (ierr /= 0) stop "Error writing to file"
+        end if
+    else
+        ! Read operation (all processes read)
+        call MPI_File_read(fh, var, nx*ny, MPI_RPREC, status, ierr)
+        if (ierr /= 0) stop "Error reading from file"
+    end if
+
+    ! Close the file
+    call MPI_File_close(fh, ierr)
+    if (ierr /= 0) stop "Error closing file"
+
+    ! Ensure all processes have completed their I/O
+    call MPI_Barrier(comm, ierr)
+end subroutine mpi_write_read_2d_array
 end module mpi_defs

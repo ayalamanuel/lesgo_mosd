@@ -141,9 +141,7 @@ call coriolis_init()
 call output_init()
 
 ! Initialize the ocean spectrum variables
-! This has to be before initializing turbines since it needs the ocean 
-! surface information
-if (wave_type == 1 .and. coord == 0) then
+if (wave_type == 1) then
 call spectrum_calc()
 endif
 

@@ -273,6 +273,7 @@ subroutine turbines_nodes
 !
 use functions, only : cross_product
 use param, only : dx, dy
+use sim_param, only : detadx, detadx_dt
 implicit none
 
 character (*), parameter :: sub_name = mod_name // '.turbines_nodes'
@@ -305,15 +306,17 @@ y => grid % y
 z => grid % z
 
 sumA = 0._rprec
+rx_l = 0.0_rprec
+ry_l = 0.0_rprec
+rz_l = 0.0_rprec
+
 
 ! z_tot for total domain (since z is local to the processor)
 do k = 1,nz_tot
     z_tot(k) = (k - 0.5_rprec) * dz
 end do
 
-
 do s=1,nloc
-
     count_n = 0    !used for counting nodes for each turbine
     count_i = 1    !index count - used for writing to array "nodes"
 
@@ -402,8 +405,7 @@ do s=1,nloc
     ! platform base. (rx,ry,rz) are the components for r in ind. For both ind and "arm",
     ! rx and ry will be same but rz is different. (rzz) is for the "arm". rzz > rz
 
-    do k=k_start,k_end  !global k ----> MA: this is not global k, this is the local 
-                        ! for each processor
+    do k=k_start,k_end  !global k
         do j=min_j,max_j
             do i=min_i,max_i
                 if (i<1) then
@@ -495,10 +497,11 @@ subroutine turbines_forcing()
 !
 ! This subroutine applies the drag-disk forcing
 !
-use param, only : pi, lbz, total_time
+use param, only : pi, lbz, total_time, coord, wave_type
 use sim_param, only : u, v, w, fxa, fya, fza, detadx, detadx_dt, eta
 use functions, only : linear_interp, interp_to_uv_grid, interp_to_w_grid
 use mpi
+use mosd_wm, only : mono_wave, spectrum_wave
 implicit none
 
 character(*), parameter :: sub_name = mod_name // '.turbines_forcing'
@@ -519,6 +522,7 @@ real(rprec), allocatable, dimension(:,:,:) ::  u_rel, v_rel, w_rel
 real(rprec), allocatable, dimension(:,:,:) :: w_uv
 real(rprec), pointer, dimension(:) :: y, z
 real(rprec), dimension(nloc) :: buffer_array
+real(rprec) :: eta_val
 
 nullify(y,z)
 y => grid % y
@@ -526,7 +530,6 @@ z => grid % z
 
 allocate(w_uv(ld,ny,lbz:nz))
 allocate(u_vel_disk(ld,ny,lbz:nz), v_vel_disk(ld,ny,lbz:nz), w_vel_disk(ld,ny,lbz:nz))
-allocate(u_rel(ld,ny,lbz:nz), v_rel(ld,ny,lbz:nz), w_rel(ld,ny,lbz:nz))
 
 #ifdef PPMPI
 !syncing intermediate w-velocities
@@ -539,27 +542,38 @@ w_uv = interp_to_uv_grid(w, lbz)
 ! Here we select which type of angle we want for the turbines. Make sure
 ! theta2 is in degrees and the omega's are in radians 
 select case(angle_type)
-        ! Offshore angles. Angles coming from the wave
-        case (0)
+
+        case (0)        ! Offshore angles. Angles coming from the wave
+
+! This is done to ensure that if the turbine is divided into
+! processors, then each processor has information of the wave
+#ifdef PPMPI 
+        if (coord>0) then
+                if (wave_type==0) then
+                call mono_wave
+                else 
+                call spectrum_wave
+                end if
+        end if 
+#endif
         do s = 1,nloc
              wind_farm%turbine(s)%theta1 = 0.0_rprec
              wind_farm%turbine(s)%theta2 = detadx(wind_farm%turbine(s)%xloc_og,   &
                                            wind_farm%turbine(s)%yloc_og)*180/pi
-             wind_farm%turbine(s)%omegax = 0.0_rprec
-             wind_farm%turbine(s)%omegay = detadx_dt(wind_farm%turbine(s)%xloc_og,&
-                                           wind_farm%turbine(s)%yloc_og)
-             wind_farm%turbine(s)%omegaz = 0.0_rprec
-             wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +           & 
-                                        wind_farm%turbine(s)%height_og*           &
-                                        sin(wind_farm%turbine(s)%theta2*pi/180)
-             wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
-             wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
-                                          cos(wind_farm%turbine(s)%theta2*pi/180)
+              wind_farm%turbine(s)%omegax = 0.0_rprec
+              wind_farm%turbine(s)%omegay = detadx_dt(wind_farm%turbine(s)%xloc_og,&
+                                            wind_farm%turbine(s)%yloc_og)
+              wind_farm%turbine(s)%omegaz = 0.0_rprec
+              wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +           & 
+                                          wind_farm%turbine(s)%height_og*           &
+                                          sin(wind_farm%turbine(s)%theta2*pi/180)
+              wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
+              wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
+                                            cos(wind_farm%turbine(s)%theta2*pi/180)
         end do
         call turbines_nodes
         
-        ! Forced angle. Angle coming from equation
-        case (1)
+        case (1)       ! Forced angle. Angle coming from equation
         do s = 1,nloc
              wind_farm%turbine(s)%theta1 = 0.0_rprec
              wind_farm%turbine(s)%theta2 = (theta2_amp*sin(theta2_freq*2*pi*      & 
@@ -569,16 +583,15 @@ select case(angle_type)
                                            cos(theta2_freq*2*pi*total_time))*pi/180
              wind_farm%turbine(s)%omegaz = 0.0_rprec
              wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +           &  
-                                        wind_farm%turbine(s)%height_og*           &
-                                        sin(wind_farm%turbine(s)%theta2*pi/180)
+                                         wind_farm%turbine(s)%height_og*           &
+                                         sin(wind_farm%turbine(s)%theta2*pi/180)
              wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
              wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
-                                          cos(wind_farm%turbine(s)%theta2*pi/180)
+                                           cos(wind_farm%turbine(s)%theta2*pi/180)
         end do
         call turbines_nodes
 
-        ! Dyanmic angles. Angles coming from table
-        case (2)
+        case (2)       ! Dyanmic angles. Angles coming from table
         do s = 1, nloc
              if (dyn_theta1) wind_farm%turbine(s)%theta1 =                              &
                 linear_interp(theta1_time, theta1_arr(s,:), total_time_dim)
@@ -588,15 +601,13 @@ select case(angle_type)
                 linear_interp(Ct_prime_time, Ct_prime_arr(s,:), total_time_dim)
         end do
         call turbines_nodes
-                
-        ! No angles
-        case (3)
+        
+        case (3)        ! No angles
         do s = 1,nloc
              wind_farm%turbine(s)%omegax = 0.0_rprec
              wind_farm%turbine(s)%omegay = 0.0_rprec
              wind_farm%turbine(s)%omegaz = 0.0_rprec
         end do
-        
         case default
         call error (sub_name2, 'invalid')
 end select
@@ -607,6 +618,10 @@ disk_avg_vel = 0._rprec
 u_vel_center = 0._rprec
 v_vel_center = 0._rprec
 w_vel_center = 0._rprec
+u_vel_disk = 0._rprec
+v_vel_disk = 0._rprec
+w_vel_disk = 0._rprec
+
 do s=1,nloc
     !set pointers for omega
     p_omegax => wind_farm%turbine(s)%omegax
@@ -974,8 +989,18 @@ else
 
         case default
             call error (sub_name, 'invalid orientation')
-
     end select
+
+    ! flag for setting the prescribed turbine location as the orginal (OG)
+    ! location. this is for turbines dynamically tilting, yawing, etc
+    if (angle_type < 3) then
+
+    wind_farm%turbine(:)%xloc_og = wind_farm%turbine(:)%xloc
+    wind_farm%turbine(:)%yloc_og = wind_farm%turbine(:)%yloc
+    wind_farm%turbine(:)%height_og = wind_farm%turbine(:)%height
+
+    end if
+
 end if
 
 end subroutine place_turbines

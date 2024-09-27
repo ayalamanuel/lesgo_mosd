@@ -27,7 +27,7 @@ module mosd_wm
 use types, only : rprec
 use param, only : wave_type, nx, ny, ld, dx, dz, dt, total_time_dim, total_time,&
                   amp, wave_n, wave_freq, u_star, z_i, pi, kp_spec, zgrid_match,&
-                  nu_molec, vonk, zo, smooth_eqm, dy, uns_mosd
+                  nu_molec, vonk, zo, smooth_eqm, dy, uns_mosd, coord
 use sim_param, only : eqmxz, eqmyz, s_wpmxz, s_wpmyz,uns_wpmxz, uns_wpmyz, eta, &
                       detadx, detady, detadt, u_orb, w_orb, deta2dx2, deta2dy2, &
                       detadxdy, detadydx, eta_filter, grad_eta_mag, dgrad_etadt,&
@@ -43,11 +43,10 @@ use derivatives, only : ddx_fd, ddy_fd
 use wave_spectrum, only : frequency_shift
 use messages, only : error
 use eqmfit_wm, only : eqmfit_calc
-
 implicit none
 
 private  
-public :: wpm_calc,  mosd_finalize
+public :: wpm_calc,  mosd_finalize, mono_wave, spectrum_wave
 
 contains
 !*******************************************************************************
@@ -199,6 +198,7 @@ detadx_dt = (detadx_new(:,:) - detadx(:,:))/dt
 detady_dt = (detady_new(:,:) - detady(:,:))/dt
 detadx = detadx_new(:,:)
 detady = detady_new(:,:)
+
 
 end subroutine spectrum_wave
 

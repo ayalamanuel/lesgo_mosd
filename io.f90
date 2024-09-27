@@ -746,7 +746,13 @@ if (pavg_calc) then
     end if
 end if
 
-if(waveplane_calc) then
+
+! For waveplane and mosdplane data output, it is only being called when
+! coord=0. Since all these variables are available at nz=1 for each
+! processor, we do not want to have redundancy of output data. 
+! getting it from the first processor is enough
+
+if(waveplane_calc .and. coord==0) then
     if (jt_total >= waveplane_nstart .and. jt_total <= waveplane_nend .and.          &
         ( mod(jt_total-waveplane_nstart,waveplane_nskip)==0) ) then
         if (jt_total == waveplane_nstart) then
@@ -764,7 +770,7 @@ if(waveplane_calc) then
     end if
 end if
 
-if(mosdplane_calc) then
+if(mosdplane_calc .and. coord==0) then
     if (jt_total >= mosdplane_nstart .and. jt_total <= mosdplane_nend .and.          &
         ( mod(jt_total-mosdplane_nstart,mosdplane_nskip)==0) ) then
         if (jt_total == mosdplane_nstart) then
@@ -1449,7 +1455,7 @@ call scalars_checkpoint()
 
 call coriolis_finalize()
 
-if (wave_type==1 .and. coord == 0) then
+if (wave_type==1 .and. coord==0) then
    call wave_spectrum_checkpoint()
 end if
 
