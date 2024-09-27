@@ -271,7 +271,7 @@ subroutine turbines_nodes
 ! This subroutine locates nodes for each turbine and builds the arrays: ind,
 ! n_hat, num_nodes, and nodes.
 !
-use functions, only : cross_product
+use functions, only : cross_product, bilinear_interp
 use param, only : dx, dy
 use sim_param, only : detadx, detadx_dt
 implicit none
@@ -402,8 +402,8 @@ do s=1,nloc
     ! Here the r vector is calculated for the indicator function and also the "arm"
     ! for the disk velocity calculation for dyanmic tilting and yawing. Note that
     ! the r vector for the ind is from the center and the "arm" is from the 
-    ! platform base. (rx,ry,rz) are the components for r in ind. For both ind and "arm",
-    ! rx and ry will be same but rz is different. (rzz) is for the "arm". rzz > rz
+    ! platform base. (rx,ry,rz) are the components for r in ind. (rxx,ryy,rzz) is 
+    ! for the "arm". 
 
     do k=k_start,k_end  !global k
         do j=min_j,max_j
@@ -503,6 +503,7 @@ subroutine turbines_forcing()
 use param, only : pi, lbz, total_time, coord, wave_type
 use sim_param, only : u, v, w, fxa, fya, fza, detadx, detadx_dt, eta
 use functions, only : linear_interp, interp_to_uv_grid, interp_to_w_grid
+use functions, only : bilinear_interp
 use mpi
 use mosd_wm, only : mono_wave, spectrum_wave
 implicit none
@@ -523,11 +524,13 @@ real(rprec), dimension(nloc) :: u_vel_center, v_vel_center, w_vel_center
 real(rprec), allocatable, dimension(:,:,:) ::  u_vel_disk, v_vel_disk, w_vel_disk
 real(rprec), allocatable, dimension(:,:,:) ::  u_rel, v_rel, w_rel
 real(rprec), allocatable, dimension(:,:,:) :: w_uv
-real(rprec), pointer, dimension(:) :: y, z
+real(rprec), pointer, dimension(:) :: y, z,x
 real(rprec), dimension(nloc) :: buffer_array
 real(rprec) :: eta_val
 
-nullify(y,z)
+nullify(x,y,z)
+
+x => grid % x
 y => grid % y
 z => grid % z
 
@@ -559,19 +562,25 @@ select case(angle_type)
                 end if
         end if 
 #endif
+!write(*,*) 'size x', size(x)
+!write(*,*) 'size y', size(y)
+!write(*,*) 'detadx', size(detadx(:,:),1)
+!write(*,*) 'detadx2', size(detadx(:,:),2)
         do s = 1,nloc
              wind_farm%turbine(s)%theta1 = 0.0_rprec
-             wind_farm%turbine(s)%theta2 = -detadx(wind_farm%turbine(s)%xloc_og,   &
-                                           wind_farm%turbine(s)%yloc_og)*180/pi
+             wind_farm%turbine(s)%theta2 = -(bilinear_interp(x(1:nx),y(1:ny),detadx(:,:),    &
+                                           wind_farm%turbine(s)%xloc_og,         &
+                                           wind_farm%turbine(s)%yloc_og))*180/pi
               wind_farm%turbine(s)%omegax = 0.0_rprec
-              wind_farm%turbine(s)%omegay = detadx_dt(wind_farm%turbine(s)%xloc_og,&
-                                            wind_farm%turbine(s)%yloc_og)
+              wind_farm%turbine(s)%omegay = (bilinear_interp(x(1:nx),y(1:ny),detadx_dt(:,:), &
+                                           wind_farm%turbine(s)%xloc_og,         &
+                                           wind_farm%turbine(s)%yloc_og))
               wind_farm%turbine(s)%omegaz = 0.0_rprec
-              wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +           & 
-                                          wind_farm%turbine(s)%height_og*           &
+              wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +         & 
+                                          wind_farm%turbine(s)%height_og*        &
                                           sin(wind_farm%turbine(s)%theta2*pi/180)
               wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
-              wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
+              wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*      &
                                             cos(wind_farm%turbine(s)%theta2*pi/180)
         end do
         call turbines_nodes
@@ -703,13 +712,15 @@ do s=1,nloc
     !write values to file
     if (modulo (jt_total, tbase) == 0 .and. coord == 0) then
         if (angle_type==0) then
-                eta_val = eta(wind_farm%turbine(s)%xloc_og, wind_farm%turbine(s)%yloc_og)
+                eta_val = (bilinear_interp(x(1:nx),y(1:ny),eta(:,:),                    &
+                                           wind_farm%turbine(s)%xloc_og,    &
+                                           wind_farm%turbine(s)%yloc_og))
         else
                 eta_val = 0.0 
         end if
         write( forcing_fid(s), *) total_time_dim, u_vel_center(s),         &
             v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,            &
-            wind_farm%turbine(s)%theta1, -wind_farm%turbine(s)%theta2,      &
+            wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,      &
             p_Ct_prime, jt_total, eta_val
     end if
 
@@ -750,8 +761,9 @@ end if
 
 ! Cleanup
 deallocate(w_uv)
-nullify(y,z)
+nullify(x,y,z)
 nullify(p_icp, p_jcp, p_kcp)
+nullify(p_omegax,p_omegay, p_omegaz)
 
 end subroutine turbines_forcing
 
