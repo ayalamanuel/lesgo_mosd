@@ -278,7 +278,7 @@ implicit none
 
 character (*), parameter :: sub_name = mod_name // '.turbines_nodes'
 
-real(rprec) :: rx,ry,rz,rzz,r,r_norm,r_disk
+real(rprec) :: rx,ry,rz,rxx, rzz,r,r_norm,r_disk
 real(rprec), pointer :: p_xloc => null(), p_yloc => null(), p_height => null()
 real(rprec), pointer :: p_dia => null(), p_thk => null()
 real(rprec), pointer :: p_theta1 => null(), p_theta2 => null()
@@ -411,12 +411,15 @@ do s=1,nloc
                 if (i<1) then
                     i2 = mod(i+nx-1,nx)+1
                     rx = (x(i2)-L_x) - p_xloc
+                    rxx = (x(i2)-L_x) - wind_farm%turbine(s)%xloc_og
                 elseif (i>nx) then
                     i2 = mod(i+nx-1,nx)+1
                     rx = (L_x+x(i2)) - p_xloc
+                    rxx = (L_x+x(i2)) - wind_farm%turbine(s)%xloc_og
                 else
                     i2 = i
                     rx = x(i) - p_xloc
+                    rxx = x(i) - wind_farm%turbine(s)%xloc_og
                 end if
                 if (j<1) then
                     j2 = mod(j+ny-1,ny)+1
@@ -432,7 +435,7 @@ do s=1,nloc
                     rzz = z_tot(k) 
 
                 ! Local rx_l
-                    rx_l(i2,j2,k-coord*(nz-1)) = rx
+                    rx_l(i2,j2,k-coord*(nz-1)) = rxx
                     ry_l(i2,j2,k-coord*(nz-1)) = ry
                     rz_l(i2,j2,k-coord*(nz-1)) = rzz
 
@@ -558,7 +561,7 @@ select case(angle_type)
 #endif
         do s = 1,nloc
              wind_farm%turbine(s)%theta1 = 0.0_rprec
-             wind_farm%turbine(s)%theta2 = detadx(wind_farm%turbine(s)%xloc_og,   &
+             wind_farm%turbine(s)%theta2 = -detadx(wind_farm%turbine(s)%xloc_og,   &
                                            wind_farm%turbine(s)%yloc_og)*180/pi
               wind_farm%turbine(s)%omegax = 0.0_rprec
               wind_farm%turbine(s)%omegay = detadx_dt(wind_farm%turbine(s)%xloc_og,&
@@ -706,7 +709,7 @@ do s=1,nloc
         end if
         write( forcing_fid(s), *) total_time_dim, u_vel_center(s),         &
             v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,            &
-            wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,      &
+            wind_farm%turbine(s)%theta1, -wind_farm%turbine(s)%theta2,      &
             p_Ct_prime, jt_total, eta_val
     end if
 
@@ -736,7 +739,6 @@ call mpi_sync_real_array( fxa(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
 call mpi_sync_real_array( fya(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
 call mpi_sync_real_array( fza(1:nx,1:ny,lbz:nz), 0, MPI_SYNC_DOWNUP )
 fza = interp_to_w_grid(fza,lbz)
-
 
 !spatially average velocity at the top of the domain and write to file
 if (coord .eq. nproc-1) then
