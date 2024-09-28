@@ -528,6 +528,8 @@ real(rprec), pointer, dimension(:) :: y, z,x
 real(rprec), dimension(nloc) :: buffer_array
 real(rprec) :: eta_val
 
+integer :: i_xloc_og, j_yloc_og
+
 nullify(x,y,z)
 
 x => grid % x
@@ -562,25 +564,21 @@ select case(angle_type)
                 end if
         end if 
 #endif
-!write(*,*) 'size x', size(x)
-!write(*,*) 'size y', size(y)
-!write(*,*) 'detadx', size(detadx(:,:),1)
-!write(*,*) 'detadx2', size(detadx(:,:),2)
-        do s = 1,nloc
+       do s = 1,nloc
              wind_farm%turbine(s)%theta1 = 0.0_rprec
-             wind_farm%turbine(s)%theta2 = -(bilinear_interp(x(1:nx),y(1:ny),detadx(:,:),    &
-                                           wind_farm%turbine(s)%xloc_og,         &
+             wind_farm%turbine(s)%theta2 = -(bilinear_interp(x(1:nx),y(1:ny),detadx,    &
+                                           wind_farm%turbine(s)%xloc_og,                &
                                            wind_farm%turbine(s)%yloc_og))*180/pi
               wind_farm%turbine(s)%omegax = 0.0_rprec
-              wind_farm%turbine(s)%omegay = (bilinear_interp(x(1:nx),y(1:ny),detadx_dt(:,:), &
-                                           wind_farm%turbine(s)%xloc_og,         &
+              wind_farm%turbine(s)%omegay = (bilinear_interp(x(1:nx),y(1:ny),detadx_dt, &
+                                           wind_farm%turbine(s)%xloc_og,                &
                                            wind_farm%turbine(s)%yloc_og))
               wind_farm%turbine(s)%omegaz = 0.0_rprec
-              wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +         & 
-                                          wind_farm%turbine(s)%height_og*        &
+              wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +                & 
+                                          wind_farm%turbine(s)%height_og*               &
                                           sin(wind_farm%turbine(s)%theta2*pi/180)
               wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
-              wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*      &
+              wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*             &
                                             cos(wind_farm%turbine(s)%theta2*pi/180)
         end do
         call turbines_nodes
@@ -720,7 +718,7 @@ do s=1,nloc
         end if
         write( forcing_fid(s), *) total_time_dim, u_vel_center(s),         &
             v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,            &
-            wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,      &
+            wind_farm%turbine(s)%theta1, -wind_farm%turbine(s)%theta2,     &
             p_Ct_prime, jt_total, eta_val
     end if
 

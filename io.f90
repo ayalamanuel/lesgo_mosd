@@ -752,7 +752,7 @@ end if
 ! processor, we do not want to have redundancy of output data. 
 ! getting it from the first processor is enough
 
-if(waveplane_calc .and. coord==0) then
+if(waveplane_calc) then
     if (jt_total >= waveplane_nstart .and. jt_total <= waveplane_nend .and.          &
         ( mod(jt_total-waveplane_nstart,waveplane_nskip)==0) ) then
         if (jt_total == waveplane_nstart) then
@@ -770,7 +770,7 @@ if(waveplane_calc .and. coord==0) then
     end if
 end if
 
-if(mosdplane_calc .and. coord==0) then
+if(mosdplane_calc) then
     if (jt_total >= mosdplane_nstart .and. jt_total <= mosdplane_nend .and.          &
         ( mod(jt_total-mosdplane_nstart,mosdplane_nskip)==0) ) then
         if (jt_total == mosdplane_nstart) then
